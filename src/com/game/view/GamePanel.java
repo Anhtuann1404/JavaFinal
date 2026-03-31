@@ -24,15 +24,20 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private AudioSensor audioSensor;
     private Timer gameTimer;
     
-    // QUẢN LÝ ẢNH
-    private Image bgImage; 
-    private Image flagImgA;
-    private Image flagImgB;
+    // --- QUẢN LÝ ẢNH PARALLAX (4 LỚP NỀN) ---
+    private Image bgPlain, bgHills, bgPiramids, bgForest; 
+    private float plainX = 0, hillsX = 0, piramidsX = 0, forestX = 0;
     
+    // --- QUẢN LÝ ẢNH MÂY TRÔI (CHỈ DÙNG 3 ẢNH CỤ THỂ) ---
+    private Image[] cloudImages = new Image[3]; 
+    private String[] cloudFileNames = {"cloud4.png", "cloud5.png", "cloud6.png"}; 
+    private List<Cloud> clouds = new ArrayList<>();
+    
+    private Image flagImgA, flagImgB;
     private int flagAnimTimer = 0;
     private boolean isFlagA = true;
     
-    // DANH SÁCH THỰC THỂ TRONG GAME
+    // DANH SÁCH THỰC THỂ
     private List<Platform> platforms = new ArrayList<>();
     private List<Bee> bees = new ArrayList<>(); 
     private List<FallingObject> fallingObjects = new ArrayList<>(); 
@@ -57,6 +62,49 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private final int HUD_Y = 15;
     private final int HUD_HEIGHT = 50;
 
+    // ==========================================
+    // LỚP QUẢN LÝ ĐÁM MÂY (INNER CLASS)
+    // ==========================================
+    private class Cloud {
+        float x, windSpeed;
+        int y, width, height;
+        Image img;
+        String errorFileName; // Dùng để báo lỗi nếu thiếu ảnh
+
+        public Cloud(float x, int y, int width, int height, float windSpeed, Image img, String fileName) {
+            this.x = x; this.y = y; this.width = width; this.height = height;
+            this.windSpeed = windSpeed; this.img = img;
+            this.errorFileName = fileName;
+        }
+
+        public void update(int baseSpeed) {
+            this.x -= (baseSpeed * 0.1f) + this.windSpeed;
+            
+            if (this.x + this.width < -50) {
+                this.x = WIDTH + random.nextInt(150);
+                this.y = random.nextInt(200); 
+                int randomIndex = random.nextInt(3); 
+                this.img = cloudImages[randomIndex]; 
+                this.errorFileName = cloudFileNames[randomIndex]; 
+                this.width = 80 + random.nextInt(100);
+                this.height = (int)(this.width * 0.6); 
+                this.windSpeed = 0.2f + random.nextFloat() * 0.8f; 
+            }
+        }
+
+        public void draw(Graphics2D g) {
+            if (img != null) {
+                g.drawImage(img, (int)x, y, width, height, null);
+            } else {
+                g.setColor(new Color(255, 255, 255, 150)); 
+                g.fillOval((int)x, y, width, height);
+                g.setColor(Color.RED);
+                g.setFont(new Font("Arial", Font.BOLD, 12));
+                g.drawString("Thiếu: " + errorFileName, (int)x + 5, y + (height/2));
+            }
+        }
+    }
+
     public GamePanel() {
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setFocusable(true);
@@ -65,18 +113,36 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         SoundManager.loadAllSounds();
         loadHighScore(); 
         
-        // NẠP ẢNH TỪ THƯ MỤC GỐC
+        // --- NẠP ẢNH TỪ THƯ MỤC GỐC ---
         try { 
-            File fBg = new File("background.png");
-            if(fBg.exists()) bgImage = ImageIO.read(fBg);
+            File fPlain = new File("uncolored_plain.png");
+            if(fPlain.exists()) bgPlain = ImageIO.read(fPlain);
+            
+            File fHills = new File("uncolored_hills.png");
+            if(fHills.exists()) bgHills = ImageIO.read(fHills);
+            
+            File fPiramids = new File("uncolored_piramids.png");
+            if(fPiramids.exists()) bgPiramids = ImageIO.read(fPiramids);
+            
+            File fForest = new File("uncolored_forest.png");
+            if(fForest.exists()) bgForest = ImageIO.read(fForest);
             
             File fFlagA = new File("flag_blue_a.png");
             if(fFlagA.exists()) flagImgA = ImageIO.read(fFlagA);
             
             File fFlagB = new File("flag_blue_b.png");
             if(fFlagB.exists()) flagImgB = ImageIO.read(fFlagB);
+            
+            for (int i = 0; i < 3; i++) {
+                File fc = new File(cloudFileNames[i]);
+                if (fc.exists()) {
+                    cloudImages[i] = ImageIO.read(fc);
+                } else {
+                    System.err.println("🚨 MÁY KHÔNG TÌM THẤY ẢNH: " + cloudFileNames[i]);
+                }
+            }
         } catch (Exception e) {
-            System.err.println("Lỗi nạp ảnh: Kiểm tra background.png, flag_blue_a.png, flag_blue_b.png");
+            System.err.println("Lỗi nghiêm trọng khi nạp ảnh!");
         }
 
         resetGame();
@@ -85,11 +151,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         try {
             audioSensor = new AudioSensor();
             new Thread(audioSensor).start();
-        } catch (Exception e) {
-            System.err.println("Lỗi khởi tạo AudioSensor: " + e.getMessage());
-        }
+        } catch (Exception e) {}
         
-        gameTimer = new Timer(16, this); // ~60 FPS
+        gameTimer = new Timer(16, this); 
         gameTimer.start();
     }
 
@@ -105,9 +169,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void saveHighScore() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter("highscore.txt"))) {
             bw.write(String.valueOf(highScore));
-        } catch (Exception e) {
-            System.err.println("Không thể lưu kỷ lục.");
-        }
+        } catch (Exception e) {}
     }
 
     private void resetGame() {
@@ -117,10 +179,24 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         walkSoundTimer = 0; 
         startDelay = 40; 
         
+        plainX = 0; hillsX = 0; piramidsX = 0; forestX = 0;
+        
         platforms.clear(); 
         bees.clear(); 
         fallingObjects.clear(); 
         particles.clear(); 
+        
+        clouds.clear();
+        for (int i = 0; i < 6; i++) { 
+            float cx = random.nextInt(WIDTH + 200);
+            int cy = random.nextInt(200);
+            int cw = 80 + random.nextInt(100);
+            int ch = (int)(cw * 0.6);
+            float cs = 0.2f + random.nextFloat() * 0.8f;
+            int randomIndex = random.nextInt(3);
+            Image ci = cloudImages[randomIndex];
+            clouds.add(new Cloud(cx, cy, cw, ch, cs, ci, cloudFileNames[randomIndex]));
+        }
         
         Platform startPlatform = new Platform(0, 480, 400, 250, false, false, false);
         startPlatform.coins.clear(); 
@@ -143,6 +219,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                     SoundManager.playSound("jump.wav");
                 }
             }
+            updateParallaxBackground(1); 
+            for (Cloud c : clouds) c.update(0); 
             repaint(); 
             return;
         }
@@ -187,6 +265,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         difficultyLevel = (score / 1500) + 1;
         updateMeteorTimer();
 
+        if (speed > 0) {
+            updateParallaxBackground(speed);
+        }
+
+        for (Cloud c : clouds) c.update(speed);
+
         for (Platform p : platforms) p.update(speed);
         for (Bee b : bees) b.update(speed);
         for (FallingObject fo : fallingObjects) fo.update(speed);
@@ -204,6 +288,18 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         if (player.getY() > HEIGHT) handleGameOver();
         
         repaint();
+    }
+    
+    private void updateParallaxBackground(int baseSpeed) {
+        plainX -= baseSpeed * 0.2f;       
+        hillsX -= baseSpeed * 0.4f;       
+        piramidsX -= baseSpeed * 0.6f;    
+        forestX -= baseSpeed * 0.8f;      
+        
+        if (plainX <= -WIDTH) plainX += WIDTH;
+        if (hillsX <= -WIDTH) hillsX += WIDTH;
+        if (piramidsX <= -WIDTH) piramidsX += WIDTH;
+        if (forestX <= -WIDTH) forestX += WIDTH;
     }
 
     private void handleGameOver() {
@@ -262,7 +358,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         int currentDisplayScore = score / 10;
 
-        // --- ĐIỀU KIỆN 1: CHƯỚNG NGẠI VẬT TỪ 30 ĐIỂM ---
         boolean canSpawnObstacles = currentDisplayScore >= 30;
 
         boolean hasObstacle1 = canSpawnObstacles && random.nextBoolean();
@@ -271,15 +366,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
         Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300, hasObstacle1, hasObstacle2, hasAdvancedObstacle);
         
-        // --- ĐIỀU KIỆN 2: COIN TỪ 70 ĐIỂM VÀ TẦN SUẤT RẤT THẤP ---
-        // random.nextInt(100) > 20 -> Có 80% tỷ lệ bị xóa đi (Chỉ giữ lại xu 20%)
         if (currentDisplayScore < 70 || random.nextInt(100) > 20) {
             newPlatform.coins.clear(); 
         }
         
         platforms.add(newPlatform);
         
-        // --- ĐIỀU KIỆN 3: ONG VÀ THIÊN THẠCH TỪ 30 ĐIỂM ---
         if (canSpawnObstacles) {
             if (gap > 220 && random.nextInt(100) < 60) {
                 fallingObjects.add(new FallingObject(last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3)));
@@ -292,8 +384,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void updateMeteorTimer() {
         int currentDisplayScore = score / 10;
-        
-        // --- THIÊN THẠCH RƠI NGANG TỪ 30 ĐIỂM ---
         if (currentDisplayScore < 30) return;
 
         meteorSpawnTimer++;
@@ -325,14 +415,33 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
 
-        if (currentState != State.MENU) {
-            if (bgImage != null) {
-                g2d.drawImage(bgImage, 0, 0, WIDTH, HEIGHT, null);
-            } else { 
-                g2d.setColor(new Color(135, 206, 235)); 
-                g2d.fillRect(0, 0, WIDTH, HEIGHT); 
-            }
+        g2d.setColor(new Color(193, 227, 245)); 
+        g2d.fillRect(0, 0, WIDTH, HEIGHT); 
+        
+        if (bgPlain != null) {
+            g2d.drawImage(bgPlain, (int)plainX, 0, WIDTH, HEIGHT, null);
+            g2d.drawImage(bgPlain, (int)plainX + WIDTH, 0, WIDTH, HEIGHT, null);
+        }
+        
+        if (bgHills != null) {
+            g2d.drawImage(bgHills, (int)hillsX, 0, WIDTH, HEIGHT, null);
+            g2d.drawImage(bgHills, (int)hillsX + WIDTH, 0, WIDTH, HEIGHT, null);
+        }
+        
+        if (bgPiramids != null) {
+            g2d.drawImage(bgPiramids, (int)piramidsX, 0, WIDTH, HEIGHT, null);
+            g2d.drawImage(bgPiramids, (int)piramidsX + WIDTH, 0, WIDTH, HEIGHT, null);
+        }
 
+        if (bgForest != null) {
+            g2d.drawImage(bgForest, (int)forestX, 0, WIDTH, HEIGHT, null);
+            g2d.drawImage(bgForest, (int)forestX + WIDTH, 0, WIDTH, HEIGHT, null);
+        }
+
+        // ---> GIẢI CỨU MÂY: Dời lệnh vẽ mây xuống đây để mây đè lên khu rừng <---
+        for (Cloud c : clouds) c.draw(g2d);
+
+        if (currentState != State.MENU) {
             for (Platform p : platforms) p.draw(g2d); 
             for (Bee b : bees) b.draw(g2d);
             for (FallingObject fo : fallingObjects) fo.draw(g2d);
@@ -372,7 +481,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         long time = System.currentTimeMillis();
 
         if (currentState == State.MENU) {
-            g2d.setColor(Color.BLACK); 
+            g2d.setColor(new Color(0, 0, 0, 120)); 
             g2d.fillRect(0, 0, WIDTH, HEIGHT);
             
             int floatY = (int)(Math.sin(time / 250.0) * 15); 

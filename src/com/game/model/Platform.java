@@ -10,15 +10,19 @@ import java.util.Random;
 public class Platform {
     public int x, y, width, height;
 
-    // --- HÌNH ẢNH ĐỊA HÌNH CỎ (6 tấm ảnh bạn vừa gửi) ---
+    // --- HÌNH ẢNH ĐỊA HÌNH CỎ ---
     private static Image imgTopLeft, imgTopCenter, imgTopRight;
     private static Image imgBodyLeft, imgBodyCenter, imgBodyRight;
 
-    // --- HÌNH ẢNH TRANG TRÍ ---
+    // --- HÌNH ẢNH TRANG TRÍ (CŨ + 4 ẢNH MỚI) ---
     private static Image imgFence, imgFenceBroken, imgSignRight;
+    private static Image imgTree34, imgTree27, imgGrass4, imgGrass2;
+    
     private Image decorImage;
+    
+    // Kích thước động để Cây cao hơn, Cỏ thấp hơn
+    private int decorW = 50, decorH = 50, decorOffsetY = 0;
 
-    // Kích thước chuẩn mỗi khối gạch là 50x50
     private int blockSize = 50; 
 
     // --- LOGIC DI CHUYỂN ---
@@ -35,12 +39,11 @@ public class Platform {
         this.y = y;
         this.startY = y;
 
-        // Ép chiều rộng chia hết cho 50 để ghép gạch luôn khít, không bị đứt nửa
         this.width = Math.max(150, (width / blockSize) * blockSize);
         this.height = height;
         this.isMoving = isMoving;
 
-        // TẢI ẢNH ĐỊA HÌNH (Tải 1 lần duy nhất để tối ưu)
+        // TẢI ẢNH ĐỊA HÌNH VÀ TRANG TRÍ
         try {
             if (imgTopLeft == null) imgTopLeft = ImageIO.read(new File("terrain_grass_block_top_left.png"));
             if (imgTopCenter == null) imgTopCenter = ImageIO.read(new File("terrain_grass_block_top.png"));
@@ -53,20 +56,37 @@ public class Platform {
             if (imgFence == null) imgFence = ImageIO.read(new File("fence.png"));
             if (imgFenceBroken == null) imgFenceBroken = ImageIO.read(new File("fence_broken.png"));
             if (imgSignRight == null) imgSignRight = ImageIO.read(new File("sign_right.png"));
+            
+            // --- TẢI 4 ẢNH TRANG TRÍ MỚI ---
+            if (imgTree34 == null) imgTree34 = ImageIO.read(new File("tree34.png"));
+            if (imgTree27 == null) imgTree27 = ImageIO.read(new File("tree27.png"));
+            if (imgGrass4 == null) imgGrass4 = ImageIO.read(new File("grass4.png"));
+            if (imgGrass2 == null) imgGrass2 = ImageIO.read(new File("grass2.png"));
+            
         } catch (Exception e) {
-            System.out.println("🚨 Lỗi tải ảnh terrain! Kiểm tra lại tên 6 file ảnh mới nhé.");
+            System.out.println("🚨 Lỗi tải ảnh terrain hoặc decor! Kiểm tra lại tên file.");
         }
 
         Random rand = new Random();
 
-        // CHỌN ĐỒ TRANG TRÍ NGẪU NHIÊN
+        // --- CHỌN ĐỒ TRANG TRÍ NGẪU NHIÊN KÈM KÍCH THƯỚC ---
         int decorChance = rand.nextInt(100);
-        if (decorChance < 20) decorImage = imgFence;
-        else if (decorChance < 40) decorImage = imgFenceBroken;
-        else if (decorChance < 60) decorImage = imgSignRight;
-        else decorImage = null;
+        if (decorChance < 70) { // 70% bục sẽ mọc cây/cỏ/hàng rào
+            int type = rand.nextInt(7); // Random 1 trong 7 món đồ
+            switch (type) {
+                case 0: decorImage = imgFence;       decorW = 50; decorH = 50; decorOffsetY = 5; break;
+                case 1: decorImage = imgFenceBroken; decorW = 50; decorH = 50; decorOffsetY = 5; break;
+                case 2: decorImage = imgSignRight;   decorW = 50; decorH = 50; decorOffsetY = 5; break;
+                case 3: decorImage = imgTree34;      decorW = 70; decorH = 100; decorOffsetY = 5; break; // Cây to
+                case 4: decorImage = imgTree27;      decorW = 40; decorH = 110; decorOffsetY = 5; break; // Cây cao ốm
+                case 5: decorImage = imgGrass2;      decorW = 30; decorH = 30; decorOffsetY = 2; break;  // Bụi cỏ nhỏ
+                case 6: decorImage = imgGrass4;      decorW = 40; decorH = 35; decorOffsetY = 2; break;  // Bụi cỏ to
+            }
+        } else {
+            decorImage = null; // 30% bục trống trải
+        }
 
-        // ĐẶT VẬT CẢN (Canh ngay giữa bục)
+        // ĐẶT VẬT CẢN (Canh giữa bục)
         int obsX = this.x + (this.width / 2) - 22;
         if (hasMouse) {
             this.mouse = new Mouse(obsX, y - 25, 40, 30);
@@ -106,10 +126,9 @@ public class Platform {
 
     public void draw(Graphics g) {
         int numCols = width / blockSize;
-        // Tính số hàng cần vẽ để lấp đầy phần thân xuống chạm đáy (600px là chiều cao game)
         int numRows = (600 - y) / blockSize + 1;
 
-        // --- VẼ ĐỊA HÌNH CỎ (LÁT GẠCH THÔNG MINH) ---
+        // --- VẼ ĐỊA HÌNH CỎ (LÁT GẠCH) ---
         for (int r = 0; r < numRows; r++) {
             for (int c = 0; c < numCols; c++) {
                 int drawX = x + (c * blockSize);
@@ -117,31 +136,30 @@ public class Platform {
                 Image blockImg = null;
 
                 if (r == 0) {
-                    // HÀNG 0: BỀ MẶT CỎ TRÊN CÙNG
-                    if (c == 0) blockImg = imgTopLeft;                 // Góc trái
-                    else if (c == numCols - 1) blockImg = imgTopRight; // Góc phải
-                    else blockImg = imgTopCenter;                      // Giữa
+                    if (c == 0) blockImg = imgTopLeft;                 
+                    else if (c == numCols - 1) blockImg = imgTopRight; 
+                    else blockImg = imgTopCenter;                      
                 } else {
-                    // HÀNG 1 TRỞ XUỐNG: THÂN ĐẤT LÒNG ĐẤT
-                    if (c == 0) blockImg = imgBodyLeft;                 // Mép trái
-                    else if (c == numCols - 1) blockImg = imgBodyRight; // Mép phải
-                    else blockImg = imgBodyCenter;                      // Giữa
+                    if (c == 0) blockImg = imgBodyLeft;                 
+                    else if (c == numCols - 1) blockImg = imgBodyRight; 
+                    else blockImg = imgBodyCenter;                      
                 }
 
                 if (blockImg != null) {
                     g.drawImage(blockImg, drawX, drawY, blockSize, blockSize, null);
                 } else {
-                    // Màu nâu dự phòng nếu ảnh lỗi
                     g.setColor(new Color(139, 69, 19));
                     g.fillRect(drawX, drawY, blockSize, blockSize);
                 }
             }
         }
 
-        // --- VẼ ĐỒ TRANG TRÍ (Hàng rào, biển báo) ---
+        // --- VẼ ĐỒ TRANG TRÍ LÊN BỤC ---
         if (decorImage != null) {
-            int dSize = 50;
-            g.drawImage(decorImage, x + 20, y - dSize + 5, dSize, dSize, null);
+            // Canh lề lệch sang trái một chút để chừa chỗ cho vật cản ở giữa bục
+            int dx = x + 15; 
+            int dy = y - decorH + decorOffsetY; // Trừ đi chiều cao (decorH) để mọc cắm xuống đất
+            g.drawImage(decorImage, dx, dy, decorW, decorH, null);
         }
 
         // --- VẼ VẬT CẢN VÀ XU ---
