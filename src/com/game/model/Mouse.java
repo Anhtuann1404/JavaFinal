@@ -38,7 +38,7 @@ public class Mouse {
         // 2. Tự di chuyển độc lập
         this.x += (speed * direction);
 
-        // 3. Logic đi tuần (Chạm mép bục thì quay đầu)
+        // 3. Logic đi tuần 
         int leftEdge = platX;
         int rightEdge = platX + platWidth - this.width;
 
