@@ -5,8 +5,8 @@ Game chạy bằng giọng nói (Mic) sử dụng Java Swing.
 
 ## 👥 Thành viên nhóm
 1. **Nguyễn Tài Anh Tuấn** (Trưởng nhóm)
-2. **Phùng Tấn Minh** - []
-3. **Nguyễn Hoàng Thắng** - []
+2. **Phùng Tấn Minh** - [3120225092]
+3. **Nguyễn Hoàng Thắng** - [3120225137]
 
 ## 🛠 Công nghệ
 - Ngôn ngữ: Java (JDK 17+)
