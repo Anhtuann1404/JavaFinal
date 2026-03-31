@@ -10,12 +10,12 @@ public class Main extends JFrame {
     private GamePanel gamePanel;
 
     public Main() {
-        // 1. Thiết lập tiêu đề và các thuộc tính cơ bản cho cửa sổ
+        // 1. Thiết lập cow banr tieeu ddeef vaf thuoocj tinh cho cua so
         setTitle("Đồ Án: Audio Jump Game - Scream Warrior");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setResizable(false); // Khóa kích thước để ảnh không bị vỡ khi kéo giãn
+        setResizable(false); // Khóa kích thước 
 
-        // 2. Khởi tạo Menu chính
+        // 2. Khởi tạo Menu 
         showMenu();
 
         // 3. Hiển thị cửa sổ
