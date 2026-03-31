@@ -115,7 +115,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         difficultyLevel = 1; 
         meteorSpawnTimer = 0; 
         walkSoundTimer = 0; 
-        // Đặt startDelay = 40 để tránh việc âm thanh mic kích hoạt nhảy ngay lập tức khi vừa vào game
         startDelay = 40; 
         
         platforms.clear(); 
@@ -123,9 +122,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         fallingObjects.clear(); 
         particles.clear(); 
         
-        // Tạo bục xuất phát đầu tiên
         Platform startPlatform = new Platform(0, 480, 400, 250, false, false, false);
-        // FIX LỖI: Xóa sạch toàn bộ xu ở bục đầu tiên, tránh việc nhân vật vừa xuất hiện đã nhảy ăn xu
         startPlatform.coins.clear(); 
         platforms.add(startPlatform);
 
@@ -181,7 +178,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // CẬP NHẬT ANIMATION LÁ CỜ
         flagAnimTimer++;
         if (flagAnimTimer >= 10) { 
             isFlagA = !isFlagA;
@@ -191,7 +187,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         difficultyLevel = (score / 1500) + 1;
         updateMeteorTimer();
 
-        // CẬP NHẬT TRẠNG THÁI CÁC THỰC THỂ
         for (Platform p : platforms) p.update(speed);
         for (Bee b : bees) b.update(speed);
         for (FallingObject fo : fallingObjects) fo.update(speed);
@@ -200,15 +195,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         updateParticles();
         checkCollisions();
 
-        // DỌN DẸP OBJECT KHUẤT MÀN HÌNH
         platforms.removeIf(p -> p.x < -600);
         bees.removeIf(b -> b.x < -200);
         fallingObjects.removeIf(fo -> fo.y > HEIGHT + 100 || fo.x < -200);
         
-        // SINH ĐỊA HÌNH MỚI
         if (platforms.size() < 10) generateNextPlatform();
         
-        // KIỂM TRA RƠI XUỐNG VỰC
         if (player.getY() > HEIGHT) handleGameOver();
         
         repaint();
@@ -234,7 +226,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 handleGameOver(); 
                 return;
             }
-            // Ăn xu
             for (Coin c : p.coins) {
                 if (!c.isCollected && pHit.intersects(c.getHitbox())) { 
                     c.isCollected = true; 
@@ -269,25 +260,27 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         int nextY = Math.max(250, Math.min(520, last.y + (random.nextInt(160) - 80)));
         int nextWidth = Math.max(150, 250 - (difficultyLevel * 5)) + random.nextInt(150);
         
-        // KIỂM TRA ĐIỀU KIỆN ĐIỂM > 50 
         int currentDisplayScore = score / 10;
-        boolean canSpawnObstaclesAndCoins = currentDisplayScore > 50;
 
-        boolean hasObstacle1 = canSpawnObstaclesAndCoins && random.nextBoolean();
-        boolean hasObstacle2 = canSpawnObstaclesAndCoins && random.nextBoolean();
-        boolean hasAdvancedObstacle = canSpawnObstaclesAndCoins && (difficultyLevel >= 3);
+        // --- ĐIỀU KIỆN 1: CHƯỚNG NGẠI VẬT TỪ 30 ĐIỂM ---
+        boolean canSpawnObstacles = currentDisplayScore >= 30;
+
+        boolean hasObstacle1 = canSpawnObstacles && random.nextBoolean();
+        boolean hasObstacle2 = canSpawnObstacles && random.nextBoolean();
+        boolean hasAdvancedObstacle = canSpawnObstacles && ((difficultyLevel >= 2) || (random.nextInt(100) < 30));
 
         Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300, hasObstacle1, hasObstacle2, hasAdvancedObstacle);
         
-        // --- XÓA XU NẾU ĐIỂM CHƯA ĐẠT 50 ---
-        if (!canSpawnObstaclesAndCoins) {
+        // --- ĐIỀU KIỆN 2: COIN TỪ 70 ĐIỂM VÀ TẦN SUẤT RẤT THẤP ---
+        // random.nextInt(100) > 20 -> Có 80% tỷ lệ bị xóa đi (Chỉ giữ lại xu 20%)
+        if (currentDisplayScore < 70 || random.nextInt(100) > 20) {
             newPlatform.coins.clear(); 
         }
         
         platforms.add(newPlatform);
         
-        // Sinh ong và thiên thạch nếu qua 50 điểm
-        if (canSpawnObstaclesAndCoins) {
+        // --- ĐIỀU KIỆN 3: ONG VÀ THIÊN THẠCH TỪ 30 ĐIỂM ---
+        if (canSpawnObstacles) {
             if (gap > 220 && random.nextInt(100) < 60) {
                 fallingObjects.add(new FallingObject(last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3)));
             }
@@ -299,10 +292,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void updateMeteorTimer() {
         int currentDisplayScore = score / 10;
-        if (currentDisplayScore <= 50) return;
+        
+        // --- THIÊN THẠCH RƠI NGANG TỪ 30 ĐIỂM ---
+        if (currentDisplayScore < 30) return;
 
         meteorSpawnTimer++;
         int interval = Math.max(35, 110 - (difficultyLevel * 8));
+        
         if (meteorSpawnTimer >= interval) {
             fallingObjects.add(new FallingObject(250 + random.nextInt(650), -50, 4 + random.nextInt(4)));
             meteorSpawnTimer = 0; 
@@ -329,7 +325,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
 
-        // VẼ NỀN VÀ THẾ GIỚI GAME TRONG MỌI TRẠNG THÁI (TRỪ MENU)
         if (currentState != State.MENU) {
             if (bgImage != null) {
                 g2d.drawImage(bgImage, 0, 0, WIDTH, HEIGHT, null);
@@ -342,7 +337,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             for (Bee b : bees) b.draw(g2d);
             for (FallingObject fo : fallingObjects) fo.draw(g2d);
             
-            // VẼ LÁ CỜ KỶ LỤC CŨ (Khi đang chơi)
             if (currentState == State.PLAYING && highScore > 0) {
                 int flagX = player.getX() + ((highScore * 10) - score) * 5;
                 if (flagX > -100 && flagX < WIDTH + 100) {
@@ -492,7 +486,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         if (currentState == State.GAMEOVER && e.getKeyCode() == KeyEvent.VK_SPACE) {
             resetGame(); 
             currentState = State.PLAYING;
-            startDelay = 40; // Đặt lại delay ở đây một lần nữa cho chắc chắn
+            startDelay = 40; 
         }
         if (e.getKeyCode() == KeyEvent.VK_UP) {
             walkThreshold = Math.max(0.5, walkThreshold - 0.2);
