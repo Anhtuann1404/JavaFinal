@@ -96,7 +96,7 @@
 
 # ```bash
 
-# git clone \[https://github.com/Anhtuann1404/JavaFinal.git](https://github.com/Anhtuann1404/JavaFinal.git)
+# git clone git clone [https://github.com/Anhtuann1404/JavaFinal.git](https://github.com/Anhtuann1404/JavaFinal.git)
 
 # \### 3.Mở dự án trên IDE (Import Project)
 
