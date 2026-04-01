@@ -7,7 +7,7 @@ import java.util.List;
 
 public class Player {
     private int x, y;
-    private final int WIDTH = 38, HEIGHT = 50; 
+    private final int WIDTH = 45, HEIGHT = 50; 
     
     // VẬT LÝ & DI CHUYỂN
     private double velY = 0;
@@ -70,7 +70,7 @@ public class Player {
         y += velY;
 
         animTimer++;
-        if (animTimer > 10) { 
+        if (animTimer > 20) { 
             useWalkA = !useWalkA;
             animTimer = 0;
         }

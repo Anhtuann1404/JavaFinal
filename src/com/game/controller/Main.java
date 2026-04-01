@@ -58,4 +58,10 @@ public class Main extends JFrame {
             new Main();
         });
     }
+    public void updatePlayerSkin(String color) {
+        // 'gamePanel' là biến chứa màn hình game của bạn, hãy sửa tên cho đúng nếu của bạn khác
+        if (gamePanel != null) {
+            gamePanel.setPlayerSkin(color);
+        }
+    }
 }

@@ -13,11 +13,12 @@ import java.util.Random;
 import com.game.model.*;
 import com.game.controller.SoundManager;
 
-public class GamePanel extends JPanel implements ActionListener, KeyListener, MouseListener {
+public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private final int WIDTH = 950, HEIGHT = 600;
     
-    private enum State { MENU, CHAR_SELECT, PLAYING, GAMEOVER }
-    private State currentState = State.MENU; 
+    // Đã xóa trạng thái MENU và CHAR_SELECT, chỉ còn VOICE_TEST, PLAYING, GAMEOVER
+    private enum State { VOICE_TEST, PLAYING, GAMEOVER }
+    private State currentState = State.VOICE_TEST; 
     
     private Player player;
     private AudioSensor audioSensor;
@@ -34,12 +35,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private int flagAnimTimer = 0;
     private boolean isFlagA = true;
     
-    // --- HỆ THỐNG CHỌN NHÂN VẬT ---
-    private String[] characterColors = {"yellow", "pink", "purple", "green"};
-    private Image[] charMenuImages = new Image[4]; 
-    private Rectangle[] charSelectionRects = new Rectangle[4]; 
-    private Rectangle shirtButtonRect; 
-
     // DANH SÁCH THỰC THỂ
     private List<Platform> platforms = new ArrayList<>();
     private List<Bee> bees = new ArrayList<>(); 
@@ -89,7 +84,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setFocusable(true);
         this.addKeyListener(this); 
-        this.addMouseListener(this); 
         
         SoundManager.loadAllSounds();
         loadHighScore(); 
@@ -107,25 +101,15 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             if(fFlagA.exists()) flagImgA = ImageIO.read(fFlagA);
             File fFlagB = new File("flag_blue_b.png");
             if(fFlagB.exists()) flagImgB = ImageIO.read(fFlagB);
+            
             for (int i = 0; i < 3; i++) {
                 File fc = new File(cloudFileNames[i]);
                 if (fc.exists()) cloudImages[i] = ImageIO.read(fc);
             }
-            for (int i = 0; i < 4; i++) {
-                File f = new File("character_" + characterColors[i] + "_jump.png");
-                if (f.exists()) charMenuImages[i] = ImageIO.read(f);
-            }
         } catch (Exception e) {}
 
-        // Vị trí nút chọn nhân vật góc phải
-        shirtButtonRect = new Rectangle(WIDTH - 120, HEIGHT - 110, 80, 80);
-        int startX = 245; 
-        for (int i = 0; i < 4; i++) {
-            charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 120);
-        }
-
         resetGame();
-        currentState = State.MENU; 
+        currentState = State.VOICE_TEST; 
         
         try {
             audioSensor = new AudioSensor();
@@ -147,6 +131,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         try (BufferedWriter bw = new BufferedWriter(new FileWriter("highscore.txt"))) {
             bw.write(String.valueOf(highScore));
         } catch (Exception e) {}
+    }
+
+    // Hàm public được gọi từ Main mỗi khi bấm nút PLAY ở MenuPanel
+    public void resetToVoiceTest() {
+        resetGame();
+        currentState = State.VOICE_TEST;
+        repaint();
     }
 
     private void resetGame() {
@@ -178,7 +169,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (currentState == State.MENU || currentState == State.CHAR_SELECT) {
+        if (currentState == State.VOICE_TEST) {
+            // Chỉ bắt đầu game khi vạch âm lượng vượt ngưỡng
             if (audioSensor != null && audioSensor.isCalibrated()) {
                 if (audioSensor.getCurrentVolume() >= jumpThreshold) {
                     currentState = State.PLAYING;
@@ -248,9 +240,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     }
     
     private void updateParallaxBackground(int baseSpeed) {
-        plainX -= baseSpeed * 0.2f;       
-        hillsX -= baseSpeed * 0.4f;       
-        piramidsX -= baseSpeed * 0.6f;    
+        plainX -= baseSpeed * 0.2f;        
+        hillsX -= baseSpeed * 0.4f;        
+        piramidsX -= baseSpeed * 0.6f;     
         forestX -= baseSpeed * 0.8f;      
         
         if (plainX <= -WIDTH) plainX += WIDTH;
@@ -310,9 +302,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         int nextWidth = Math.max(150, 250 - (difficultyLevel * 5)) + random.nextInt(150);
         
         int currentDisplayScore = score / 10;
-        
         boolean canSpawnObstacles = currentDisplayScore >= 100;
-
         int obstacleChance = Math.min(95, 30 + (difficultyLevel * 15)); 
         int advancedChance = Math.min(85, 10 + (difficultyLevel * 12)); 
 
@@ -342,12 +332,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
     private void updateMeteorTimer() {
         int currentDisplayScore = score / 10;
-        
         if (currentDisplayScore < 100) return;
-
         meteorSpawnTimer++;
         int interval = Math.max(30, 130 - (difficultyLevel * 15)); 
-        
         if (meteorSpawnTimer >= interval) {
             int meteorDropChance = Math.min(90, 25 + (difficultyLevel * 10)); 
             if (random.nextInt(100) < meteorDropChance) {
@@ -393,7 +380,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
         for (Cloud c : clouds) c.draw(g2d);
 
-        if (currentState != State.MENU && currentState != State.CHAR_SELECT) {
+        if (currentState != State.VOICE_TEST) {
             for (Platform p : platforms) p.draw(g2d); 
             for (Bee b : bees) b.draw(g2d);
             for (FallingObject fo : fallingObjects) fo.draw(g2d);
@@ -419,25 +406,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private void drawUI(Graphics2D g2d) {
         long time = System.currentTimeMillis();
 
-        if (currentState == State.MENU) {
-            // Nền đen mờ 150 để chữ trắng nổi bật
+        if (currentState == State.VOICE_TEST) {
             g2d.setColor(new Color(0, 0, 0, 150)); 
             g2d.fillRect(0, 0, WIDTH, HEIGHT);
             
-            int floatY = (int)(Math.sin(time / 250.0) * 15); 
-            
-            // Căn chỉnh Title và Điểm
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 75));
-            g2d.setColor(Color.DARK_GRAY);
-            g2d.drawString("SCREAM RUNNER", WIDTH/2 - 286, HEIGHT/3 - 46 + floatY); 
-            g2d.setColor(new Color(255, 215, 0)); 
-            g2d.drawString("SCREAM RUNNER", WIDTH/2 - 290, HEIGHT/3 - 50 + floatY); 
-            
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 30));
-            g2d.setColor(Color.CYAN); 
-            g2d.drawString("🏆 KỶ LỤC: " + highScore, WIDTH/2 - 130, HEIGHT/3 + 40);
-
-            // --- VỊ TRÍ VOICE TEST NẰM CHÍNH GIỮA (Không đè vào ai) ---
             if (audioSensor != null) {
                 int v = (int) audioSensor.getCurrentVolume();
                 int barWidth = Math.min(400, (int)(v * 15)); 
@@ -468,52 +440,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             g2d.setFont(new Font("Monospaced", Font.PLAIN, 16));
             g2d.setColor(Color.LIGHT_GRAY);
             g2d.drawString("Phím [Lên/Xuống] để chỉnh ngưỡng vạch vàng", WIDTH/2 - 210, HEIGHT/2 + 160);
-            
-            // Nút chọn nhân vật A - Thu nhỏ một xíu để không cồng kềnh
-            g2d.setColor(new Color(255, 255, 255, 60)); 
-            g2d.fillRoundRect(shirtButtonRect.x, shirtButtonRect.y, shirtButtonRect.width, shirtButtonRect.height, 15, 15);
-            g2d.setColor(Color.WHITE); g2d.drawRoundRect(shirtButtonRect.x, shirtButtonRect.y, shirtButtonRect.width, shirtButtonRect.height, 15, 15);
-            
-            g2d.setFont(new Font("Arial", Font.BOLD, 60)); 
-            g2d.drawString("A", shirtButtonRect.x + 22, shirtButtonRect.y + 60);
-            g2d.setFont(new Font("Monospaced", Font.PLAIN, 10));
-            g2d.drawString("NHÂN VẬT", shirtButtonRect.x + 15, shirtButtonRect.y - 5);
-            return;
-        }
-
-        if (currentState == State.CHAR_SELECT) {
-            g2d.setColor(new Color(0, 0, 0, 180)); 
-            g2d.fillRect(0, 0, WIDTH, HEIGHT);
-            
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 60));
-            g2d.setColor(Color.WHITE);
-            g2d.drawString("LỰA CHỌN NHÂN VẬT", WIDTH/2 - 300, 100);
-            
-            for (int i = 0; i < 4; i++) {
-                Rectangle r = charSelectionRects[i];
-                
-                if (player.getCurrentColor().equals(characterColors[i])) {
-                    g2d.setColor(new Color(0, 255, 255, 100)); 
-                    g2d.fillRoundRect(r.x - 5, r.y - 5, r.width + 10, r.height + 10, 15, 15);
-                    g2d.setColor(Color.CYAN);
-                    g2d.drawRoundRect(r.x - 5, r.y - 5, r.width + 10, r.height + 10, 15, 15);
-                } else {
-                    g2d.setColor(new Color(255, 255, 255, 50));
-                    g2d.drawRoundRect(r.x, r.y, r.width, r.height, 10, 10);
-                }
-                
-                if (charMenuImages[i] != null) {
-                    g2d.drawImage(charMenuImages[i], r.x + 10, r.y + 10, r.width - 20, r.height - 40, null);
-                }
-                
-                g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
-                g2d.setColor(Color.WHITE);
-                g2d.drawString(characterColors[i].toUpperCase(), r.x + 15, r.y + r.height - 10);
-            }
-            
-            g2d.setFont(new Font("Monospaced", Font.PLAIN, 20));
-            g2d.setColor(Color.LIGHT_GRAY);
-            g2d.drawString("[ NHẤP CHUỘT CHỌN NHÂN VẬT - HÉT HOẶC SPACE ĐỂ QUAY VỀ ]", WIDTH/2 - 330, HEIGHT - 50);
             return;
         }
 
@@ -578,59 +504,29 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     }
 
     @Override
-    public void mouseClicked(MouseEvent e) {
-        int mx = e.getX();
-        int my = e.getY();
-        
-        if (currentState == State.CHAR_SELECT) {
-            for (int i = 0; i < 4; i++) {
-                if (charSelectionRects[i].contains(mx, my)) {
-                    player.loadCharacterImages(characterColors[i]);
-                    SoundManager.playSound("jump.wav"); 
-                    repaint(); 
-                    return;
-                }
-            }
-        }
-        
-        if (currentState == State.MENU) {
-            if (shirtButtonRect.contains(mx, my)) {
-                currentState = State.CHAR_SELECT;
-                SoundManager.playSound("jump.wav"); 
-                repaint();
-            }
-        }
-    }
-
-    @Override public void mousePressed(MouseEvent e) {}
-    @Override public void mouseReleased(MouseEvent e) {}
-    @Override public void mouseEntered(MouseEvent e) {}
-    @Override public void mouseExited(MouseEvent e) {}
-
-    @Override
     public void keyPressed(KeyEvent e) { 
         int key = e.getKeyCode();
         
-        // --- CHƠI LẠI NGAY LẬP TỨC KHÔNG QUA MENU START ---
         if (currentState == State.GAMEOVER && key == KeyEvent.VK_SPACE) {
             resetGame(); 
             currentState = State.PLAYING; 
-            startDelay = 40; // Cho người chơi nghỉ nửa giây chuẩn bị hét
+            startDelay = 40; 
         }
         
-        // Màn hình chọn nhân vật thì quay về Menu Start
-        if (currentState == State.CHAR_SELECT && key == KeyEvent.VK_SPACE) {
-            currentState = State.MENU; 
-        }
-        
-        // Chỉnh độ nhạy mic
-        if (currentState == State.MENU && e.getKeyCode() == KeyEvent.VK_UP) {
+        if (currentState == State.VOICE_TEST && e.getKeyCode() == KeyEvent.VK_UP) {
             jumpThreshold = Math.max(walkThreshold + 1, jumpThreshold - 0.5);
         }
-        if (currentState == State.MENU && e.getKeyCode() == KeyEvent.VK_DOWN) {
+        if (currentState == State.VOICE_TEST && e.getKeyCode() == KeyEvent.VK_DOWN) {
             jumpThreshold += 0.5;
         }
     }
     @Override public void keyReleased(KeyEvent e) {}
     @Override public void keyTyped(KeyEvent e) {}
+
+    // --- HÀM SET SKIN TỪ MÀN HÌNH MENU ---
+    public void setPlayerSkin(String color) {
+        if (player != null) {
+            player.loadCharacterImages(color);
+        }
+    }
 }
