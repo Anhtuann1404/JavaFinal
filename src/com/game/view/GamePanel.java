@@ -13,22 +13,19 @@ import java.util.Random;
 import com.game.model.*;
 import com.game.controller.SoundManager;
 
-public class GamePanel extends JPanel implements ActionListener, KeyListener {
+public class GamePanel extends JPanel implements ActionListener, KeyListener, MouseListener {
     private final int WIDTH = 950, HEIGHT = 600;
     
-    // HỆ THỐNG TRẠNG THÁI GAME
-    private enum State { MENU, PLAYING, GAMEOVER }
+    private enum State { MENU, CHAR_SELECT, PLAYING, GAMEOVER }
     private State currentState = State.MENU; 
     
     private Player player;
     private AudioSensor audioSensor;
     private Timer gameTimer;
     
-    // --- QUẢN LÝ ẢNH PARALLAX (4 LỚP NỀN) ---
+    // --- QUẢN LÝ ẢNH NỀN & MÂY ---
     private Image bgPlain, bgHills, bgPiramids, bgForest; 
     private float plainX = 0, hillsX = 0, piramidsX = 0, forestX = 0;
-    
-    // --- QUẢN LÝ ẢNH MÂY TRÔI (CHỈ DÙNG 3 ẢNH CỤ THỂ) ---
     private Image[] cloudImages = new Image[3]; 
     private String[] cloudFileNames = {"cloud4.png", "cloud5.png", "cloud6.png"}; 
     private List<Cloud> clouds = new ArrayList<>();
@@ -37,6 +34,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private int flagAnimTimer = 0;
     private boolean isFlagA = true;
     
+    // --- HỆ THỐNG CHỌN NHÂN VẬT ---
+    private String[] characterColors = {"yellow", "pink", "purple", "green"};
+    private Image[] charMenuImages = new Image[4]; 
+    private Rectangle[] charSelectionRects = new Rectangle[4]; 
+    private Rectangle shirtButtonRect; 
+
     // DANH SÁCH THỰC THỂ
     private List<Platform> platforms = new ArrayList<>();
     private List<Bee> bees = new ArrayList<>(); 
@@ -48,60 +51,37 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private int highScore = 0; 
     private int difficultyLevel = 1;
     private Random random = new Random();
-    
-    // TIMERS VÀ DELAYS
     private int meteorSpawnTimer = 0; 
     private int walkSoundTimer = 0;
     private int startDelay = 0; 
 
-    // ĐỘ NHẠY MIC
     private double walkThreshold = 1.5;  
     private double jumpThreshold = 7.0; 
 
-    // TỌA ĐỘ HUD
     private final int HUD_Y = 15;
     private final int HUD_HEIGHT = 50;
 
-    // ==========================================
-    // LỚP QUẢN LÝ ĐÁM MÂY (INNER CLASS)
-    // ==========================================
     private class Cloud {
         float x, windSpeed;
         int y, width, height;
         Image img;
-        String errorFileName; // Dùng để báo lỗi nếu thiếu ảnh
-
-        public Cloud(float x, int y, int width, int height, float windSpeed, Image img, String fileName) {
+        public Cloud(float x, int y, int width, int height, float windSpeed, Image img) {
             this.x = x; this.y = y; this.width = width; this.height = height;
             this.windSpeed = windSpeed; this.img = img;
-            this.errorFileName = fileName;
         }
-
         public void update(int baseSpeed) {
             this.x -= (baseSpeed * 0.1f) + this.windSpeed;
-            
             if (this.x + this.width < -50) {
                 this.x = WIDTH + random.nextInt(150);
                 this.y = random.nextInt(200); 
-                int randomIndex = random.nextInt(3); 
-                this.img = cloudImages[randomIndex]; 
-                this.errorFileName = cloudFileNames[randomIndex]; 
+                this.img = cloudImages[random.nextInt(3)]; 
                 this.width = 80 + random.nextInt(100);
                 this.height = (int)(this.width * 0.6); 
                 this.windSpeed = 0.2f + random.nextFloat() * 0.8f; 
             }
         }
-
         public void draw(Graphics2D g) {
-            if (img != null) {
-                g.drawImage(img, (int)x, y, width, height, null);
-            } else {
-                g.setColor(new Color(255, 255, 255, 150)); 
-                g.fillOval((int)x, y, width, height);
-                g.setColor(Color.RED);
-                g.setFont(new Font("Arial", Font.BOLD, 12));
-                g.drawString("Thiếu: " + errorFileName, (int)x + 5, y + (height/2));
-            }
+            if (img != null) g.drawImage(img, (int)x, y, width, height, null);
         }
     }
 
@@ -109,40 +89,39 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setFocusable(true);
         this.addKeyListener(this); 
+        this.addMouseListener(this); 
         
         SoundManager.loadAllSounds();
         loadHighScore(); 
         
-        // --- NẠP ẢNH TỪ THƯ MỤC GỐC ---
         try { 
             File fPlain = new File("uncolored_plain.png");
             if(fPlain.exists()) bgPlain = ImageIO.read(fPlain);
-            
             File fHills = new File("uncolored_hills.png");
             if(fHills.exists()) bgHills = ImageIO.read(fHills);
-            
             File fPiramids = new File("uncolored_piramids.png");
             if(fPiramids.exists()) bgPiramids = ImageIO.read(fPiramids);
-            
             File fForest = new File("uncolored_forest.png");
             if(fForest.exists()) bgForest = ImageIO.read(fForest);
-            
             File fFlagA = new File("flag_blue_a.png");
             if(fFlagA.exists()) flagImgA = ImageIO.read(fFlagA);
-            
             File fFlagB = new File("flag_blue_b.png");
             if(fFlagB.exists()) flagImgB = ImageIO.read(fFlagB);
-            
             for (int i = 0; i < 3; i++) {
                 File fc = new File(cloudFileNames[i]);
-                if (fc.exists()) {
-                    cloudImages[i] = ImageIO.read(fc);
-                } else {
-                    System.err.println("🚨 MÁY KHÔNG TÌM THẤY ẢNH: " + cloudFileNames[i]);
-                }
+                if (fc.exists()) cloudImages[i] = ImageIO.read(fc);
             }
-        } catch (Exception e) {
-            System.err.println("Lỗi nghiêm trọng khi nạp ảnh!");
+            for (int i = 0; i < 4; i++) {
+                File f = new File("character_" + characterColors[i] + "_jump.png");
+                if (f.exists()) charMenuImages[i] = ImageIO.read(f);
+            }
+        } catch (Exception e) {}
+
+        // Vị trí nút chọn nhân vật góc phải
+        shirtButtonRect = new Rectangle(WIDTH - 120, HEIGHT - 110, 80, 80);
+        int startX = 245; 
+        for (int i = 0; i < 4; i++) {
+            charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 120);
         }
 
         resetGame();
@@ -161,9 +140,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         try (BufferedReader br = new BufferedReader(new FileReader("highscore.txt"))) {
             String line = br.readLine();
             if (line != null) highScore = Integer.parseInt(line);
-        } catch (Exception e) { 
-            highScore = 0; 
-        }
+        } catch (Exception e) { highScore = 0; }
     }
 
     private void saveHighScore() {
@@ -173,18 +150,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
 
     private void resetGame() {
-        score = 0; 
-        difficultyLevel = 1; 
-        meteorSpawnTimer = 0; 
-        walkSoundTimer = 0; 
-        startDelay = 40; 
-        
+        score = 0; difficultyLevel = 1; meteorSpawnTimer = 0; walkSoundTimer = 0; startDelay = 40; 
         plainX = 0; hillsX = 0; piramidsX = 0; forestX = 0;
-        
-        platforms.clear(); 
-        bees.clear(); 
-        fallingObjects.clear(); 
-        particles.clear(); 
+        platforms.clear(); bees.clear(); fallingObjects.clear(); particles.clear(); 
         
         clouds.clear();
         for (int i = 0; i < 6; i++) { 
@@ -193,16 +161,15 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             int cw = 80 + random.nextInt(100);
             int ch = (int)(cw * 0.6);
             float cs = 0.2f + random.nextFloat() * 0.8f;
-            int randomIndex = random.nextInt(3);
-            Image ci = cloudImages[randomIndex];
-            clouds.add(new Cloud(cx, cy, cw, ch, cs, ci, cloudFileNames[randomIndex]));
+            Image ci = cloudImages[random.nextInt(3)];
+            clouds.add(new Cloud(cx, cy, cw, ch, cs, ci));
         }
         
         Platform startPlatform = new Platform(0, 480, 400, 250, false, false, false);
-        startPlatform.coins.clear(); 
         platforms.add(startPlatform);
 
-        player = new Player(150, 400); 
+        if (player == null) player = new Player(150, 400);
+        else { player.setX(150); player.setY(400); }
         
         for(int i = 0; i < 6; i++) {
             generateNextPlatform();
@@ -211,7 +178,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (currentState == State.MENU) {
+        if (currentState == State.MENU || currentState == State.CHAR_SELECT) {
             if (audioSensor != null && audioSensor.isCalibrated()) {
                 if (audioSensor.getCurrentVolume() >= jumpThreshold) {
                     currentState = State.PLAYING;
@@ -237,12 +204,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         if (startDelay == 0 && audioSensor != null && audioSensor.isCalibrated()) {
             double vol = audioSensor.getCurrentVolume();
             if (vol >= jumpThreshold) { 
-                if (player.isGrounded()) { 
-                    SoundManager.playSound("jump.wav");
-                    player.jump(vol); 
-                }
+                player.jump(vol); 
                 speed = 9 + (difficultyLevel / 2);
-                score += 2;
+                score += 2; 
             } else if (vol >= walkThreshold) { 
                 speed = 5 + (difficultyLevel / 2); 
                 score += 1;
@@ -251,16 +215,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                     SoundManager.playSound("walk.wav");
                     walkSoundTimer = 0;
                 }
-            } else {
-                walkSoundTimer = 14; 
-            }
+            } else { walkSoundTimer = 14; }
         }
 
         flagAnimTimer++;
-        if (flagAnimTimer >= 10) { 
-            isFlagA = !isFlagA;
-            flagAnimTimer = 0;
-        }
+        if (flagAnimTimer >= 10) { isFlagA = !isFlagA; flagAnimTimer = 0; }
 
         difficultyLevel = (score / 1500) + 1;
         updateMeteorTimer();
@@ -270,21 +229,19 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
 
         for (Cloud c : clouds) c.update(speed);
-
         for (Platform p : platforms) p.update(speed);
         for (Bee b : bees) b.update(speed);
         for (FallingObject fo : fallingObjects) fo.update(speed);
         if (player != null) player.update(platforms);
         
         updateParticles();
-        checkCollisions();
+        checkCollisions(); 
 
         platforms.removeIf(p -> p.x < -600);
         bees.removeIf(b -> b.x < -200);
         fallingObjects.removeIf(fo -> fo.y > HEIGHT + 100 || fo.x < -200);
         
         if (platforms.size() < 10) generateNextPlatform();
-        
         if (player.getY() > HEIGHT) handleGameOver();
         
         repaint();
@@ -314,7 +271,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void checkCollisions() {
         Rectangle pHit = player.getHitbox();
-        
         for (Platform p : platforms) {
             if ((p.getMouseHitbox() != null && pHit.intersects(p.getMouseHitbox())) || 
                 (p.getSawHitbox() != null && pHit.intersects(p.getSawHitbox()))) {
@@ -329,7 +285,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 }
             }
         }
-        
         for (Bee b : bees) {
             if (pHit.intersects(b.getHitbox())) { 
                 spawnExplosion(player.getX() + 30, player.getY() + 40, Color.YELLOW); 
@@ -337,7 +292,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 return; 
             }
         }
-        
         for (FallingObject fo : fallingObjects) {
             if (pHit.intersects(fo.getHitbox())) { 
                 spawnExplosion(player.getX() + 30, player.getY() + 40, new Color(178, 34, 34)); 
@@ -349,7 +303,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void generateNextPlatform() {
         if (platforms.isEmpty()) return;
-        
         Platform last = platforms.get(platforms.size() - 1);
         int gap = 160 + random.nextInt(Math.min(300, 150 + (difficultyLevel * 10)));
         int nextX = last.x + last.width + gap;
@@ -357,26 +310,31 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         int nextWidth = Math.max(150, 250 - (difficultyLevel * 5)) + random.nextInt(150);
         
         int currentDisplayScore = score / 10;
+        
+        boolean canSpawnObstacles = currentDisplayScore >= 100;
 
-        boolean canSpawnObstacles = currentDisplayScore >= 30;
+        int obstacleChance = Math.min(95, 30 + (difficultyLevel * 15)); 
+        int advancedChance = Math.min(85, 10 + (difficultyLevel * 12)); 
 
-        boolean hasObstacle1 = canSpawnObstacles && random.nextBoolean();
-        boolean hasObstacle2 = canSpawnObstacles && random.nextBoolean();
-        boolean hasAdvancedObstacle = canSpawnObstacles && ((difficultyLevel >= 2) || (random.nextInt(100) < 30));
+        boolean hasObstacle1 = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
+        boolean hasObstacle2 = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25)); 
+        boolean hasAdvancedObstacle = canSpawnObstacles && (random.nextInt(100) < advancedChance);
 
         Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300, hasObstacle1, hasObstacle2, hasAdvancedObstacle);
         
-        if (currentDisplayScore < 70 || random.nextInt(100) > 20) {
+        if (currentDisplayScore < 100 || random.nextInt(100) > 20) {
             newPlatform.coins.clear(); 
         }
-        
         platforms.add(newPlatform);
         
         if (canSpawnObstacles) {
-            if (gap > 220 && random.nextInt(100) < 60) {
+            int gapObstacleChance = Math.min(90, 25 + (difficultyLevel * 10)); 
+            int beeChance = Math.min(80, 20 + (difficultyLevel * 10));
+
+            if (gap > 220 && random.nextInt(100) < gapObstacleChance) {
                 fallingObjects.add(new FallingObject(last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3)));
             }
-            if (random.nextInt(100) < 35) {
+            if (random.nextInt(100) < beeChance) {
                 bees.add(new Bee(nextX + random.nextInt(nextWidth), 100 + random.nextInt(150), 120)); 
             }
         }
@@ -384,30 +342,28 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void updateMeteorTimer() {
         int currentDisplayScore = score / 10;
-        if (currentDisplayScore < 30) return;
+        
+        if (currentDisplayScore < 100) return;
 
         meteorSpawnTimer++;
-        int interval = Math.max(35, 110 - (difficultyLevel * 8));
+        int interval = Math.max(30, 130 - (difficultyLevel * 15)); 
         
         if (meteorSpawnTimer >= interval) {
-            fallingObjects.add(new FallingObject(250 + random.nextInt(650), -50, 4 + random.nextInt(4)));
+            int meteorDropChance = Math.min(90, 25 + (difficultyLevel * 10)); 
+            if (random.nextInt(100) < meteorDropChance) {
+                fallingObjects.add(new FallingObject(250 + random.nextInt(650), -50, 4 + random.nextInt(4)));
+            }
             meteorSpawnTimer = 0; 
         }
     }
 
     private void updateParticles() {
         Iterator<Particle> it = particles.iterator();
-        while (it.hasNext()) { 
-            Particle p = it.next(); 
-            p.update(); 
-            if (p.isDead()) it.remove(); 
-        }
+        while (it.hasNext()) { Particle p = it.next(); p.update(); if (p.isDead()) it.remove(); }
     }
 
     private void spawnExplosion(int x, int y, Color color) {
-        for (int i = 0; i < 30; i++) {
-            particles.add(new Particle(x, y, color));
-        }
+        for (int i = 0; i < 30; i++) { particles.add(new Particle(x, y, color)); }
     }
 
     @Override
@@ -422,26 +378,22 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             g2d.drawImage(bgPlain, (int)plainX, 0, WIDTH, HEIGHT, null);
             g2d.drawImage(bgPlain, (int)plainX + WIDTH, 0, WIDTH, HEIGHT, null);
         }
-        
         if (bgHills != null) {
             g2d.drawImage(bgHills, (int)hillsX, 0, WIDTH, HEIGHT, null);
             g2d.drawImage(bgHills, (int)hillsX + WIDTH, 0, WIDTH, HEIGHT, null);
         }
-        
         if (bgPiramids != null) {
             g2d.drawImage(bgPiramids, (int)piramidsX, 0, WIDTH, HEIGHT, null);
             g2d.drawImage(bgPiramids, (int)piramidsX + WIDTH, 0, WIDTH, HEIGHT, null);
         }
-
         if (bgForest != null) {
             g2d.drawImage(bgForest, (int)forestX, 0, WIDTH, HEIGHT, null);
             g2d.drawImage(bgForest, (int)forestX + WIDTH, 0, WIDTH, HEIGHT, null);
         }
 
-        // ---> GIẢI CỨU MÂY: Dời lệnh vẽ mây xuống đây để mây đè lên khu rừng <---
         for (Cloud c : clouds) c.draw(g2d);
 
-        if (currentState != State.MENU) {
+        if (currentState != State.MENU && currentState != State.CHAR_SELECT) {
             for (Platform p : platforms) p.draw(g2d); 
             for (Bee b : bees) b.draw(g2d);
             for (FallingObject fo : fallingObjects) fo.draw(g2d);
@@ -451,22 +403,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 if (flagX > -100 && flagX < WIDTH + 100) {
                     Image currentFlag = isFlagA ? flagImgA : flagImgB;
                     int flagY = 280; 
-
-                    g2d.setColor(new Color(0, 255, 255, 60));
-                    g2d.fillOval(flagX + 5, flagY + 50, 50, 15);
-
-                    if (currentFlag != null) {
-                        g2d.drawImage(currentFlag, flagX, flagY, 60, 60, null);
-                    } else { 
-                        g2d.setColor(Color.CYAN); 
-                        g2d.fillRect(flagX, flagY, 10, 60); 
-                    }
-                    
-                    g2d.setColor(Color.BLACK); 
-                    g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
+                    if (currentFlag != null) g2d.drawImage(currentFlag, flagX, flagY, 60, 60, null);
+                    g2d.setColor(Color.WHITE); g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
                     g2d.drawString("KỶ LỤC CŨ", flagX - 12, flagY - 8); 
-                    g2d.setColor(Color.YELLOW); 
-                    g2d.drawString("KỶ LỤC CŨ", flagX - 14, flagY - 10);
                 }
             }
 
@@ -481,20 +420,24 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         long time = System.currentTimeMillis();
 
         if (currentState == State.MENU) {
-            g2d.setColor(new Color(0, 0, 0, 120)); 
+            // Nền đen mờ 150 để chữ trắng nổi bật
+            g2d.setColor(new Color(0, 0, 0, 150)); 
             g2d.fillRect(0, 0, WIDTH, HEIGHT);
             
             int floatY = (int)(Math.sin(time / 250.0) * 15); 
+            
+            // Căn chỉnh Title và Điểm
             g2d.setFont(new Font("Monospaced", Font.BOLD, 75));
             g2d.setColor(Color.DARK_GRAY);
-            g2d.drawString("SCREAM RUNNER", WIDTH/2 - 286, HEIGHT/2 - 106 + floatY); 
-            g2d.setColor(new Color(255, 215, 0));
-            g2d.drawString("SCREAM RUNNER", WIDTH/2 - 290, HEIGHT/2 - 110 + floatY); 
+            g2d.drawString("SCREAM RUNNER", WIDTH/2 - 286, HEIGHT/3 - 46 + floatY); 
+            g2d.setColor(new Color(255, 215, 0)); 
+            g2d.drawString("SCREAM RUNNER", WIDTH/2 - 290, HEIGHT/3 - 50 + floatY); 
             
             g2d.setFont(new Font("Monospaced", Font.BOLD, 30));
-            g2d.setColor(Color.CYAN);
-            g2d.drawString("🏆 KỶ LỤC: " + highScore, WIDTH/2 - 130, HEIGHT/2 - 20);
+            g2d.setColor(Color.CYAN); 
+            g2d.drawString("🏆 KỶ LỤC: " + highScore, WIDTH/2 - 130, HEIGHT/3 + 40);
 
+            // --- VỊ TRÍ VOICE TEST NẰM CHÍNH GIỮA (Không đè vào ai) ---
             if (audioSensor != null) {
                 int v = (int) audioSensor.getCurrentVolume();
                 int barWidth = Math.min(400, (int)(v * 15)); 
@@ -502,9 +445,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
                 g2d.setFont(new Font("Monospaced", Font.BOLD, 20));
                 g2d.setColor(Color.WHITE);
-                g2d.drawString("THỬ MIC TRƯỚC KHI VÀO:", WIDTH/2 - 140, HEIGHT/2 + 35);
+                g2d.drawString("THỬ MIC TRƯỚC KHI VÀO:", WIDTH/2 - 135, HEIGHT/2 + 35);
                 
-                g2d.setColor(new Color(255, 255, 255, 50));
+                g2d.setColor(new Color(255, 255, 255, 60));
                 g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, 400, 20);
                 
                 if (v >= jumpThreshold) g2d.setColor(Color.RED);
@@ -519,12 +462,58 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             g2d.setFont(new Font("Monospaced", Font.BOLD, 22));
             g2d.setColor(Color.WHITE);
             if (time % 1000 < 600) {
-                g2d.drawString(">>> HÉT VƯỢT VẠCH VÀNG ĐỂ BẮT ĐẦU <<<", WIDTH/2 - 240, HEIGHT/2 + 120);
+                g2d.drawString(">>> HÉT VƯỢT VẠCH VÀNG ĐỂ BẮT ĐẦU <<<", WIDTH/2 - 235, HEIGHT/2 + 120);
             }
             
             g2d.setFont(new Font("Monospaced", Font.PLAIN, 16));
             g2d.setColor(Color.LIGHT_GRAY);
-            g2d.drawString("Phím [Lên/Xuống] để chỉnh ngưỡng vạch vàng", WIDTH/2 - 210, HEIGHT - 30);
+            g2d.drawString("Phím [Lên/Xuống] để chỉnh ngưỡng vạch vàng", WIDTH/2 - 210, HEIGHT/2 + 160);
+            
+            // Nút chọn nhân vật A - Thu nhỏ một xíu để không cồng kềnh
+            g2d.setColor(new Color(255, 255, 255, 60)); 
+            g2d.fillRoundRect(shirtButtonRect.x, shirtButtonRect.y, shirtButtonRect.width, shirtButtonRect.height, 15, 15);
+            g2d.setColor(Color.WHITE); g2d.drawRoundRect(shirtButtonRect.x, shirtButtonRect.y, shirtButtonRect.width, shirtButtonRect.height, 15, 15);
+            
+            g2d.setFont(new Font("Arial", Font.BOLD, 60)); 
+            g2d.drawString("A", shirtButtonRect.x + 22, shirtButtonRect.y + 60);
+            g2d.setFont(new Font("Monospaced", Font.PLAIN, 10));
+            g2d.drawString("NHÂN VẬT", shirtButtonRect.x + 15, shirtButtonRect.y - 5);
+            return;
+        }
+
+        if (currentState == State.CHAR_SELECT) {
+            g2d.setColor(new Color(0, 0, 0, 180)); 
+            g2d.fillRect(0, 0, WIDTH, HEIGHT);
+            
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 60));
+            g2d.setColor(Color.WHITE);
+            g2d.drawString("LỰA CHỌN NHÂN VẬT", WIDTH/2 - 300, 100);
+            
+            for (int i = 0; i < 4; i++) {
+                Rectangle r = charSelectionRects[i];
+                
+                if (player.getCurrentColor().equals(characterColors[i])) {
+                    g2d.setColor(new Color(0, 255, 255, 100)); 
+                    g2d.fillRoundRect(r.x - 5, r.y - 5, r.width + 10, r.height + 10, 15, 15);
+                    g2d.setColor(Color.CYAN);
+                    g2d.drawRoundRect(r.x - 5, r.y - 5, r.width + 10, r.height + 10, 15, 15);
+                } else {
+                    g2d.setColor(new Color(255, 255, 255, 50));
+                    g2d.drawRoundRect(r.x, r.y, r.width, r.height, 10, 10);
+                }
+                
+                if (charMenuImages[i] != null) {
+                    g2d.drawImage(charMenuImages[i], r.x + 10, r.y + 10, r.width - 20, r.height - 40, null);
+                }
+                
+                g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
+                g2d.setColor(Color.WHITE);
+                g2d.drawString(characterColors[i].toUpperCase(), r.x + 15, r.y + r.height - 10);
+            }
+            
+            g2d.setFont(new Font("Monospaced", Font.PLAIN, 20));
+            g2d.setColor(Color.LIGHT_GRAY);
+            g2d.drawString("[ NHẤP CHUỘT CHỌN NHÂN VẬT - HÉT HOẶC SPACE ĐỂ QUAY VỀ ]", WIDTH/2 - 330, HEIGHT - 50);
             return;
         }
 
@@ -533,13 +522,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
         g2d.setFont(new Font("Monospaced", Font.BOLD, 22));
 
-        String sT = "💰 ĐIỂM: " + (score / 10);
+        String sT = " ĐIỂM: " + (score / 10);
         g2d.setColor(Color.BLACK); g2d.drawString(sT, 42, 47);
-        g2d.setColor(new Color(255, 215, 0)); g2d.drawString(sT, 40, 45);
+        g2d.setColor(new Color(255, 215, 0)); g2d.drawString(sT, 40, 45); 
 
         String hSText = "🏆 " + highScore;
         g2d.setColor(Color.BLACK); g2d.drawString(hSText, 222, 47);
-        g2d.setColor(Color.CYAN); g2d.drawString(hSText, 220, 45);
+        g2d.setColor(Color.CYAN); g2d.drawString(hSText, 220, 45); 
 
         String lT = "🔥 LVL: " + difficultyLevel;
         g2d.setColor(Color.BLACK); g2d.drawString(lT, WIDTH - 148, 47);
@@ -552,19 +541,18 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             g2d.setColor(Color.WHITE); g2d.drawString(micText, WIDTH/2 - 170, 45);
 
             int v = (int) audioSensor.getCurrentVolume();
-            int aB = Math.min(20, v * 2);
             int barStartX = WIDTH/2 - 70; 
 
             for (int i = 0; i < 20; i++) {
                 int cX = barStartX + (i * 12); 
-                if (i < aB) {
-                    if (i < 8) g2d.setColor(new Color(50, 205, 50));
-                    else if (i < 15) g2d.setColor(new Color(255, 140, 0));
-                    else g2d.setColor(new Color(220, 20, 60));
+                g2d.setColor(new Color(255, 255, 255, 50));
+                g2d.fillRect(cX, 31, 8, 14); 
+
+                if (v >= i + 1) {
+                    if (i < 8) g2d.setColor(new Color(50, 205, 50)); 
+                    else if (i < 15) g2d.setColor(new Color(255, 140, 0)); 
+                    else g2d.setColor(new Color(220, 20, 60)); 
                     g2d.fillRect(cX, 25, 8, 24); 
-                } else {
-                    g2d.setColor(new Color(255, 255, 255, 50));
-                    g2d.fillRect(cX, 31, 8, 14); 
                 }
             }
         }
@@ -579,30 +567,67 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             g2d.drawString("ĐIỂM ĐẠT ĐƯỢC: " + (score/10), WIDTH/2 - 190, HEIGHT/2 + 20);
             
             if ((score/10) >= highScore && highScore > 0) {
-                g2d.setColor(Color.YELLOW);
-                g2d.drawString("🎉 KỶ LỤC MỚI XÁC LẬP! 🎉", WIDTH/2 - 230, HEIGHT/2 + 70);
+                g2d.setColor(Color.YELLOW); g2d.drawString("🎉 KỶ LỤC MỚI XÁC LẬP! 🎉", WIDTH/2 - 230, HEIGHT/2 + 70);
             } else {
-                g2d.setColor(Color.CYAN);
-                g2d.drawString("KỶ LỤC CŨ: " + highScore, WIDTH/2 - 150, HEIGHT/2 + 70);
+                g2d.setColor(Color.CYAN); g2d.drawString("KỶ LỤC CŨ: " + highScore, WIDTH/2 - 150, HEIGHT/2 + 70);
             }
             
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 22)); g2d.setColor(Color.WHITE); 
-            if (time % 1000 < 700) g2d.drawString("[ NHẤN SPACE ĐỂ PHỤC THÙ ]", WIDTH/2 - 175, HEIGHT/2 + 130);
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 22)); g2d.setColor(Color.WHITE); time = System.currentTimeMillis(); 
+            if (time % 1000 < 700) g2d.drawString("[ NHẤN SPACE ĐỂ CHƠI LẠI ]", WIDTH/2 - 175, HEIGHT/2 + 130);
         }
     }
 
-    @Override public void keyPressed(KeyEvent e) { 
-        if (currentState == State.GAMEOVER && e.getKeyCode() == KeyEvent.VK_SPACE) {
-            resetGame(); 
-            currentState = State.PLAYING;
-            startDelay = 40; 
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        int mx = e.getX();
+        int my = e.getY();
+        
+        if (currentState == State.CHAR_SELECT) {
+            for (int i = 0; i < 4; i++) {
+                if (charSelectionRects[i].contains(mx, my)) {
+                    player.loadCharacterImages(characterColors[i]);
+                    SoundManager.playSound("jump.wav"); 
+                    repaint(); 
+                    return;
+                }
+            }
         }
-        if (e.getKeyCode() == KeyEvent.VK_UP) {
-            walkThreshold = Math.max(0.5, walkThreshold - 0.2);
+        
+        if (currentState == State.MENU) {
+            if (shirtButtonRect.contains(mx, my)) {
+                currentState = State.CHAR_SELECT;
+                SoundManager.playSound("jump.wav"); 
+                repaint();
+            }
+        }
+    }
+
+    @Override public void mousePressed(MouseEvent e) {}
+    @Override public void mouseReleased(MouseEvent e) {}
+    @Override public void mouseEntered(MouseEvent e) {}
+    @Override public void mouseExited(MouseEvent e) {}
+
+    @Override
+    public void keyPressed(KeyEvent e) { 
+        int key = e.getKeyCode();
+        
+        // --- CHƠI LẠI NGAY LẬP TỨC KHÔNG QUA MENU START ---
+        if (currentState == State.GAMEOVER && key == KeyEvent.VK_SPACE) {
+            resetGame(); 
+            currentState = State.PLAYING; 
+            startDelay = 40; // Cho người chơi nghỉ nửa giây chuẩn bị hét
+        }
+        
+        // Màn hình chọn nhân vật thì quay về Menu Start
+        if (currentState == State.CHAR_SELECT && key == KeyEvent.VK_SPACE) {
+            currentState = State.MENU; 
+        }
+        
+        // Chỉnh độ nhạy mic
+        if (currentState == State.MENU && e.getKeyCode() == KeyEvent.VK_UP) {
             jumpThreshold = Math.max(walkThreshold + 1, jumpThreshold - 0.5);
         }
-        if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-            walkThreshold += 0.2;
+        if (currentState == State.MENU && e.getKeyCode() == KeyEvent.VK_DOWN) {
             jumpThreshold += 0.5;
         }
     }

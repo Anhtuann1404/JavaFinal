@@ -1,125 +1,127 @@
 package com.game.model;
 
-import java.awt.Graphics;
-import java.awt.Image;
-import java.awt.Rectangle;
+import java.awt.*;
 import java.io.File;
 import javax.imageio.ImageIO;
 import java.util.List;
 
 public class Player {
-    private int x;
-    private double y; 
+    private int x, y;
+    private final int WIDTH = 38, HEIGHT = 50; 
     
-    // KÍCH THƯỚC CHUẨN: 60x75 (Khớp với code cũ của bạn)
-    private int width = 70;   
-    private int height = 75;  
+    // VẬT LÝ & DI CHUYỂN
+    private double velY = 0;
+    private final double GRAVITY = 0.8; 
+    private final double JUMP_FORCE = -17; 
+    private boolean isGrounded = false;
     
-    private double velocityY = 0;   
-    private final double GRAVITY = 0.6; 
-    private final double JUMP_FORCE = -12.5; 
+    // --- QUẢN LÝ ẢNH NHÂN VẬT ĐỘNG ---
+    private Image imgWalkA, imgWalkB, imgJump;
     
-    private boolean isGrounded = false; 
-    
-    // --- 3 BỨC ẢNH ANIMATION ---
-    private Image imgJump;   // character.png
-    private Image imgWalkA;  // character_walk_a.png
-    private Image imgWalkB;  // character_walk_b.png
-
-    // --- BIẾN ĐIỀU KHIỂN ANIMATION ---
-    private int frameCount = 0;      
-    private boolean isWalkA = true;  
+    // ANIMATION
+    private int animTimer = 0;
+    private boolean useWalkA = true;
+    private String currentColor = "yellow"; // Mặc định là màu Yellow
 
     public Player(int x, int y) {
         this.x = x;
-        this.y = (double)y;
+        this.y = y;
+        // Load nhân vật mặc định ban đầu
+        loadCharacterImages("yellow");
+    }
+
+    // --- HÀM TẢI ẢNH THEO MÀU SẮC ĐƯỢC CHỌN ---
+    public void loadCharacterImages(String color) {
+        this.currentColor = color;
         
-        // Tải đúng tên file bạn yêu cầu
+        String pathJump = "character_" + color + "_jump.png";
+        String pathWalkA = "character_" + color + "_walk_a.png";
+        String pathWalkB = "character_" + color + "_walk_b.png";
+        
         try {
-            imgJump = ImageIO.read(new File("character.png"));
-            imgWalkA = ImageIO.read(new File("character_walk_a.png"));
-            imgWalkB = ImageIO.read(new File("character_walk_b.png"));
+            File fJump = new File(pathJump);
+            if (fJump.exists()) imgJump = ImageIO.read(fJump);
+
+            File fWalkA = new File(pathWalkA);
+            if (fWalkA.exists()) imgWalkA = ImageIO.read(fWalkA);
+            else {
+                File fWalkBTmp = new File(pathWalkB);
+                if (fWalkBTmp.exists()) imgWalkA = ImageIO.read(fWalkBTmp);
+            }
+            
+            File fWalkB = new File(pathWalkB);
+            if (fWalkB.exists()) imgWalkB = ImageIO.read(fWalkB);
+
         } catch (Exception e) {
-            System.out.println("🚨 Lỗi: Hãy kiểm tra file character.png, character_walk_a.png và character_walk_b.png trong thư mục gốc!");
+            System.err.println("🚨 Lỗi load ảnh nhân vật màu: " + color);
         }
     }
 
     public void jump(double volume) {
         if (isGrounded) {
-            // Logic nhảy có boost theo âm lượng cực hay của bạn
-            double boost = Math.min(10.0, volume / 6.0);
-            velocityY = JUMP_FORCE - boost; 
+            velY = JUMP_FORCE - (volume * 0.1); 
             isGrounded = false;
-            y -= 5; // Nhấc nhẹ để tránh dính vào bục
         }
     }
 
     public void update(List<Platform> platforms) {
-        // Áp dụng trọng lực
-        velocityY += GRAVITY;
-        y += velocityY;
+        velY += GRAVITY;
+        if (velY > 20) velY = 20;
+        y += velY;
 
+        animTimer++;
+        if (animTimer > 10) { 
+            useWalkA = !useWalkA;
+            animTimer = 0;
+        }
+
+        // --- XỬ LÝ VA CHẠM ---
         isGrounded = false; 
+        Rectangle pHitbox = getHitbox();
+
         for (Platform p : platforms) {
-            // Xử lý va chạm dựa trên code cũ của bạn (chính xác và mượt)
-            if (velocityY >= 0 && x + width - 15 > p.x && x + 15 < p.x + p.width &&
-                y + height >= p.y && y + height <= p.y + velocityY + 10) {
-                
-                y = p.y - height;
-                velocityY = 0;
-                isGrounded = true;
-                break;
-            }
-        }
-
-        // --- LOGIC HOẠT ẢNH ĐI BỘ (Chỉ chạy khi đang ở trên đất) ---
-        if (isGrounded) {
-            frameCount++;
-            if (frameCount >= 8) { // Cứ 8 khung hình đổi chân 1 lần
-                isWalkA = !isWalkA; 
-                frameCount = 0;     
+            Rectangle pRect = new Rectangle(p.x, p.y, p.width, p.height);
+            
+            if (pHitbox.intersects(pRect)) {
+                if (velY > 0 && playerFeetIsAbovePlatform(p.y)) {
+                    y = p.y - HEIGHT + 2; 
+                    velY = 0;
+                    isGrounded = true;
+                    return; 
+                }
             }
         }
     }
+    
+    private boolean playerFeetIsAbovePlatform(int platformTopY) {
+        int feetY = y + HEIGHT;
+        return feetY < platformTopY + 25; 
+    }
 
-    public void draw(Graphics g) {
-        Image currentImg = null;
-
-        // CHỌN ẢNH DỰA TRÊN TRẠNG THÁI
+    public void draw(Graphics2D g2d) {
+        Image currentImg;
         if (!isGrounded) {
-            currentImg = imgJump; // Đang bay dùng ảnh character.png
+            currentImg = imgJump;
         } else {
-            // Đứng trên đất thì đổi chân A-B
-            currentImg = isWalkA ? imgWalkA : imgWalkB;
+            currentImg = useWalkA ? imgWalkA : imgWalkB;
         }
 
-        // Vẽ ảnh lên màn hình
         if (currentImg != null) {
-            g.drawImage(currentImg, x, (int)y, width, height, null);
+            g2d.drawImage(currentImg, x, y, WIDTH, HEIGHT, null);
         } else {
-            // Dự phòng nếu mất ảnh
-            g.setColor(java.awt.Color.BLUE);
-            g.fillRect(x, (int)y, width, height);
+            g2d.setColor(Color.RED);
+            g2d.fillRect(x, y, WIDTH, HEIGHT);
         }
     }
 
-    // --- CÁC HÀM BỔ SUNG ĐỂ TƯƠNG THÍCH VỚI GAMEPANEL MỚI ---
-
-    public boolean isGrounded() {
-        return isGrounded;
-    }
-
-    public int getY() {
-        return (int)y;
-    }
-
-    public int getX() {
-        return x;
-    }
-
-    // Hộp va chạm để tính đụng bẫy, ong, thiên thạch
     public Rectangle getHitbox() {
-        // Thu nhỏ hitbox một tí để người chơi đỡ bị "chết oan"
-        return new Rectangle(x + 10, (int)y + 5, width - 20, height - 10);
+        return new Rectangle(x + 5, y + 2, WIDTH - 10, HEIGHT - 4);
     }
+
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public void setX(int x) { this.x = x; }
+    public void setY(int y) { this.y = y; }
+    public boolean isGrounded() { return isGrounded; }
+    public String getCurrentColor() { return currentColor; }
 }
