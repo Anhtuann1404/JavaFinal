@@ -43,7 +43,7 @@ public class Platform {
     
     // Danh sách đồ trang trí hiển thị
     public List<Decoration> grassList = new ArrayList<>();
-    public List<Decoration> tallDecorList = new ArrayList<>(); // Dùng chung cho cả Cây và Xương rồng
+    public List<Decoration> tallDecorList = new ArrayList<>(); 
     public List<Decoration> fenceList = new ArrayList<>();
 
     public Platform(int x, int y, int width, int height, boolean hasMouse, boolean hasSaw, boolean hasAdvancedObstacle) {
@@ -123,7 +123,7 @@ public class Platform {
         }
 
         // 3. Sinh Cỏ (Trộn ngẫu nhiên 2 loại cỏ cũ và 1 loại cỏ mới)
-        int numGrass = 1 + rand.nextInt(3); // Tăng số lượng bụi cỏ lên một chút cho xum xuê
+        int numGrass = 1 + rand.nextInt(3); 
         for (int i = 0; i < numGrass; i++) {
             Image grassImg = null;
             int gW = 0, gH = 0;
@@ -187,30 +187,28 @@ public class Platform {
         }
     }
 
-    // --- HÀM NẠP ẢNH STATIC ---
+    // --- HÀM NẠP ẢNH ĐÃ SỬA ĐƯỜNG DẪN ---
     private static void loadImages() {
         try {
-            if (imgTopLeft == null) imgTopLeft = ImageIO.read(new File("terrain_grass_block_top_left.png"));
-            if (imgTopCenter == null) imgTopCenter = ImageIO.read(new File("terrain_grass_block_top.png"));
-            if (imgTopRight == null) imgTopRight = ImageIO.read(new File("terrain_grass_block_top_right.png"));
-            if (imgBodyLeft == null) imgBodyLeft = ImageIO.read(new File("terrain_grass_block_left.png"));
-            if (imgBodyCenter == null) imgBodyCenter = ImageIO.read(new File("terrain_grass_block_center.png"));
-            if (imgBodyRight == null) imgBodyRight = ImageIO.read(new File("terrain_grass_block_right.png"));
+            if (imgTopLeft == null) imgTopLeft = ImageIO.read(new File("assets/images/terrain_grass_block_top_left.png"));
+            if (imgTopCenter == null) imgTopCenter = ImageIO.read(new File("assets/images/terrain_grass_block_top.png"));
+            if (imgTopRight == null) imgTopRight = ImageIO.read(new File("assets/images/terrain_grass_block_top_right.png"));
+            if (imgBodyLeft == null) imgBodyLeft = ImageIO.read(new File("assets/images/terrain_grass_block_left.png"));
+            if (imgBodyCenter == null) imgBodyCenter = ImageIO.read(new File("assets/images/terrain_grass_block_center.png"));
+            if (imgBodyRight == null) imgBodyRight = ImageIO.read(new File("assets/images/terrain_grass_block_right.png"));
             
-            // Tải ảnh Cây cũ
-            if (imgTree34 == null) imgTree34 = ImageIO.read(new File("tree34.png"));
-            if (imgTree27 == null) imgTree27 = ImageIO.read(new File("tree27.png"));
-            if (imgGrass4 == null) imgGrass4 = ImageIO.read(new File("grass4.png"));
-            if (imgGrass2 == null) imgGrass2 = ImageIO.read(new File("grass2.png"));
+            if (imgTree34 == null) imgTree34 = ImageIO.read(new File("assets/images/tree34.png"));
+            if (imgTree27 == null) imgTree27 = ImageIO.read(new File("assets/images/tree27.png"));
+            if (imgGrass4 == null) imgGrass4 = ImageIO.read(new File("assets/images/grass4.png"));
+            if (imgGrass2 == null) imgGrass2 = ImageIO.read(new File("assets/images/grass2.png"));
             
-            // Tải ảnh Xương rồng và Cỏ mới (Sử dụng tên file bạn vừa upload)
-            if (imgCactus == null) imgCactus = ImageIO.read(new File("cactus.png"));
-            if (imgNewGrass == null) imgNewGrass = ImageIO.read(new File("grass.png"));
+            if (imgCactus == null) imgCactus = ImageIO.read(new File("assets/images/cactus.png"));
+            if (imgNewGrass == null) imgNewGrass = ImageIO.read(new File("assets/images/grass.png"));
             
-            if (imgFence == null) imgFence = ImageIO.read(new File("fence.png"));
-            if (imgFenceBroken == null) imgFenceBroken = ImageIO.read(new File("fence_broken.png"));
+            if (imgFence == null) imgFence = ImageIO.read(new File("assets/images/fence.png"));
+            if (imgFenceBroken == null) imgFenceBroken = ImageIO.read(new File("assets/images/fence_broken.png"));
         } catch (Exception e) {
-            System.out.println("🚨 Lỗi tải ảnh trong Platform!");
+            System.out.println("🚨 Lỗi tải ảnh trong Platform: " + e.getMessage());
         }
     }
 
@@ -233,7 +231,6 @@ public class Platform {
         int numCols = width / blockSize;
         int numRows = (600 - y) / blockSize + 1;
 
-        // --- 1. VẼ ĐỊA HÌNH ---
         for (int r = 0; r < numRows; r++) {
             for (int c = 0; c < numCols; c++) {
                 int drawX = x + (c * blockSize);
@@ -252,14 +249,10 @@ public class Platform {
             }
         }
 
-        // --- 2. VẼ TRANG TRÍ ---
         for (Decoration d : fenceList) g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
-        // Vẽ Đồ trang trí cao (Cây cũ & Xương rồng)
         for (Decoration d : tallDecorList) g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
-        // Vẽ Cỏ (Cỏ cũ & Cỏ mới nằm trên cùng)
         for (Decoration d : grassList) g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
 
-        // --- 3. VẼ CHƯỚNG NGẠI VẬT VÀ XU ---
         if (mouse != null) mouse.draw(g2d);
         if (saw != null) saw.draw(g2d);
         for (Coin c : coins) c.draw(g2d);

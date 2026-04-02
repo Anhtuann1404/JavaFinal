@@ -22,8 +22,8 @@ public class FallingObject {
         this.fallSpeed = fallSpeed;
         
         try {
-            imgA = ImageIO.read(new File("meteor_a.png"));
-            imgB = ImageIO.read(new File("meteor_b.png"));
+            imgA = ImageIO.read(new File("assets/images/meteor_a.png"));
+            imgB = ImageIO.read(new File("assets/images/meteor_b.png"));
         } catch (Exception e) {}
     }
 

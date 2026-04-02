@@ -17,8 +17,8 @@ public class Coin {
         this.x = x;
         this.y = y;
         try {
-            if (imgA == null) imgA = ImageIO.read(new File("coin_a.png"));
-            if (imgB == null) imgB = ImageIO.read(new File("coin_b.png"));
+            if (imgA == null) imgA = ImageIO.read(new File("assets/images/coin_a.png"));
+            if (imgB == null) imgB = ImageIO.read(new File("assets/images/coin_b.png"));
         } catch (Exception e) {}
     }
 

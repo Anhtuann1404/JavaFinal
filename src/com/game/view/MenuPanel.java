@@ -18,6 +18,7 @@ import java.io.File;
 import javax.imageio.ImageIO;
 
 import com.game.controller.Main;
+import com.game.controller.SoundManager;
 
 public class MenuPanel extends JPanel implements MouseListener {
     private Image menuBg;
@@ -34,13 +35,13 @@ public class MenuPanel extends JPanel implements MouseListener {
     private Rectangle backRect; 
     private String currentSkin = "yellow"; 
 
-    // --- KHAI BÁO 3 NÚT LÀ BIẾN TOÀN CỤC ĐỂ DỄ ẨN/HIỆN ---
+    // --- KHAI BÁO 3 NÚT ---
     private RoundButton playBtn;
     private RoundButton guideBtn;
     private RoundButton skinsBtn;
 
     // ==========================================
-    // CLASS TỰ TẠO NÚT HÌNH TRÒN (Tránh đè Hitbox)
+    // CLASS TỰ TẠO NÚT HÌNH TRÒN 
     // ==========================================
     class RoundButton extends JButton {
         public RoundButton() {
@@ -52,12 +53,9 @@ public class MenuPanel extends JPanel implements MouseListener {
 
         @Override
         public boolean contains(int x, int y) {
-            // Tính toán tọa độ tâm và bán kính của nút
             int radius = Math.min(getWidth(), getHeight()) / 2;
             int centerX = getWidth() / 2;
             int centerY = getHeight() / 2;
-            
-            // Dùng công thức hình học để kiểm tra xem điểm click có nằm TRONG hình tròn không
             double distance = Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2);
             return distance <= Math.pow(radius, 2);
         }
@@ -67,20 +65,20 @@ public class MenuPanel extends JPanel implements MouseListener {
         this.mainFrame = mainFrame;
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setLayout(null); 
-        this.addMouseListener(this); // Lắng nghe click chuột cho Skin menu
+        this.addMouseListener(this); 
 
-        // 1. TẢI ẢNH NỀN & ẢNH SKIN
+        // 1. TẢI ẢNH NỀN & ẢNH SKIN TỪ FOLDER MỚI
         try {
-            menuBg = ImageIO.read(new File("menu_bg.png"));
+            menuBg = ImageIO.read(new File("assets/images/menu_bg_new.png")); 
             for (int i = 0; i < 4; i++) {
-                File f = new File("character_" + characterColors[i] + "_jump.png");
+                File f = new File("assets/images/character_" + characterColors[i] + "_jump.png");
                 if (f.exists()) charMenuImages[i] = ImageIO.read(f);
             }
         } catch (Exception e) {
             System.out.println("🚨 Lỗi: Không tìm thấy file ảnh nền hoặc ảnh nhân vật!");
         }
 
-        // --- Tọa độ 4 ô chọn Skin và nút Back ---
+        // Tọa độ 4 ô chọn Skin và nút Back 
         int startX = 245; 
         for (int i = 0; i < 4; i++) {
             charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 120);
@@ -88,40 +86,37 @@ public class MenuPanel extends JPanel implements MouseListener {
         backRect = new Rectangle(WIDTH/2 - 350, HEIGHT - 80, 700, 50);
 
         // ==========================================
-        // KHỞI TẠO 3 NÚT (GIỮ NGUYÊN THÔNG SỐ CỦA BẠN)
+        // KHỞI TẠO 3 NÚT
         // ==========================================
         int btnW = 360; 
         int btnH = 160;
 
-        // 2. NÚT PLAY
         playBtn = new RoundButton();
-        createRoundButtonImage(playBtn, "btn_play_round.png", btnW, btnH);
-        playBtn.setBounds(305, 345, btnW, btnH); 
+        createRoundButtonImage(playBtn, "assets/images/btn_play_round.png", btnW, btnH);
+        playBtn.setBounds(305, 365, btnW, btnH); 
         playBtn.addActionListener(e -> {
+            SoundManager.playSound("assets/sounds/jump.wav"); 
             System.out.println("---> Clicked: PLAY");
             mainFrame.startGame(); 
         });
         this.add(playBtn);
 
-
-        // 3. NÚT GUIDE
         guideBtn = new RoundButton();
-        createRoundButtonImage(guideBtn, "btn_guide_round.png", btnW, btnH);
-        guideBtn.setBounds(170, 330, btnW, btnH); 
+        createRoundButtonImage(guideBtn, "assets/images/btn_guide_round.png", btnW, btnH);
+        guideBtn.setBounds(170, 350, btnW, btnH); 
         guideBtn.addActionListener(e -> {
+            SoundManager.playSound("assets/sounds/jump.wav"); 
             System.out.println("---> Clicked: GUIDE");
             showGuide();
         });
         this.add(guideBtn);
 
-
-        // 4. NÚT SKINS 
         skinsBtn = new RoundButton();
-        createRoundButtonImage(skinsBtn, "btn_skins_round.png", btnW, btnH);
-        skinsBtn.setBounds(445, 330, btnW, btnH); 
+        createRoundButtonImage(skinsBtn, "assets/images/btn_skins_round.png", btnW, btnH);
+        skinsBtn.setBounds(445, 350, btnW, btnH); 
         skinsBtn.addActionListener(e -> {
+            SoundManager.playSound("assets/sounds/jump.wav"); 
             System.out.println("---> Clicked: SKINS");
-            // Mở giao diện Skin và Ẩn 3 nút đi
             isSkinMenu = true;
             playBtn.setVisible(false);
             guideBtn.setVisible(false);
@@ -131,7 +126,6 @@ public class MenuPanel extends JPanel implements MouseListener {
         this.add(skinsBtn);
     }
 
-    // Hàm hỗ trợ để load ảnh vào nút
     private void createRoundButtonImage(RoundButton button, String fileName, int width, int height) {
         try {
             Image img = ImageIO.read(new File(fileName));
@@ -161,17 +155,35 @@ public class MenuPanel extends JPanel implements MouseListener {
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // Vẽ Nền
+        // ==========================================
+        // VẼ NỀN COVER
+        // ==========================================
         if (menuBg != null) {
-            g2d.drawImage(menuBg, 0, 0, WIDTH, HEIGHT, null);
+            double imgWidth = menuBg.getWidth(null);
+            double imgHeight = menuBg.getHeight(null);
+            double screenWidth = getWidth();
+            double screenHeight = getHeight();
+
+            double scaleX = screenWidth / imgWidth;
+            double scaleY = screenHeight / imgHeight;
+            double scaleFactor = Math.max(scaleX, scaleY);
+
+            int finalWidth = (int) (imgWidth * scaleFactor);
+            int finalHeight = (int) (imgHeight * scaleFactor);
+
+            int xOffset = (int) ((screenWidth - finalWidth) / 2);
+            int yOffset = (int) ((screenHeight - finalHeight) / 2);
+
+            g2d.drawImage(menuBg, xOffset, yOffset, finalWidth, finalHeight, null);
         }
 
         // ==========================================
-        // VẼ GIAO DIỆN CHỌN SKIN (CHỈ HIỆN KHI BẤM NÚT SKINS)
+        // VẼ GIAO DIỆN CHỌN SKIN 
         // ==========================================
         if (isSkinMenu) {
             g2d.setColor(new Color(0, 0, 0, 180)); 
-            g2d.fillRect(0, 0, WIDTH, HEIGHT);
+            // Cập nhật getWidth(), getHeight() để lớp đen chọn Skin tràn viền
+            g2d.fillRect(0, 0, getWidth(), getHeight()); 
             
             g2d.setFont(new Font("Monospaced", Font.BOLD, 60));
             g2d.setColor(Color.WHITE);
@@ -202,30 +214,25 @@ public class MenuPanel extends JPanel implements MouseListener {
         }
     }
 
-    // ==========================================
-    // XỬ LÝ CLICK CHUỘT CHO BẢNG CHỌN SKIN
-    // ==========================================
     @Override
     public void mouseClicked(MouseEvent e) {
         if (isSkinMenu) {
             int mx = e.getX();
             int my = e.getY();
             
-            // Kiểm tra click vào 4 ô nhân vật
             for (int i = 0; i < 4; i++) {
                 if (charSelectionRects[i].contains(mx, my)) {
                     currentSkin = characterColors[i];
-                    // Báo cho Main biết để update Skin cho GamePanel
+                    SoundManager.playSound("assets/sounds/jump.wav"); 
                     mainFrame.updatePlayerSkin(currentSkin); 
                     repaint(); 
                     return;
                 }
             }
             
-            // Kiểm tra click vào nút Quay Lại (Dòng chữ màu vàng ở dưới cùng)
             if (backRect.contains(mx, my)) {
-                isSkinMenu = false; // Tắt bảng Skin
-                // Hiện lại 3 nút Play, Guide, Skins
+                SoundManager.playSound("assets/sounds/jump.wav"); 
+                isSkinMenu = false; 
                 playBtn.setVisible(true);
                 guideBtn.setVisible(true);
                 skinsBtn.setVisible(true);

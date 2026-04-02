@@ -16,32 +16,39 @@ import com.game.controller.SoundManager;
 public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private final int WIDTH = 950, HEIGHT = 600;
     
-    // Đã xóa trạng thái MENU và CHAR_SELECT, chỉ còn VOICE_TEST, PLAYING, GAMEOVER
-    private enum State { VOICE_TEST, PLAYING, GAMEOVER }
+    
+    private enum State { VOICE_TEST, FADING_OUT, FADING_IN, PLAYING, GAMEOVER }
     private State currentState = State.VOICE_TEST; 
     
     private Player player;
     private AudioSensor audioSensor;
     private Timer gameTimer;
     
-    // --- QUẢN LÝ ẢNH NỀN & MÂY ---
+    // --- BIẾN CHO HIỆU ỨNG CHUYỂN CẢNH ---
+    private float fadeAlpha = 0f;
+    private Timer fadeTimer;
+    
     private Image bgPlain, bgHills, bgPiramids, bgForest; 
     private float plainX = 0, hillsX = 0, piramidsX = 0, forestX = 0;
     private Image[] cloudImages = new Image[3]; 
-    private String[] cloudFileNames = {"cloud4.png", "cloud5.png", "cloud6.png"}; 
+    
+    private String[] cloudFileNames = {
+        "assets/images/cloud4.png", 
+        "assets/images/cloud5.png", 
+        "assets/images/cloud6.png"
+    }; 
+    
     private List<Cloud> clouds = new ArrayList<>();
     
     private Image flagImgA, flagImgB;
     private int flagAnimTimer = 0;
     private boolean isFlagA = true;
     
-    // DANH SÁCH THỰC THỂ
     private List<Platform> platforms = new ArrayList<>();
     private List<Bee> bees = new ArrayList<>(); 
     private List<FallingObject> fallingObjects = new ArrayList<>(); 
     private List<Particle> particles = new ArrayList<>(); 
     
-    // THÔNG SỐ GAME
     private int score = 0;
     private int highScore = 0; 
     private int difficultyLevel = 1;
@@ -89,24 +96,31 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         loadHighScore(); 
         
         try { 
-            File fPlain = new File("uncolored_plain.png");
+            File fPlain = new File("assets/images/uncolored_plain.png");
             if(fPlain.exists()) bgPlain = ImageIO.read(fPlain);
-            File fHills = new File("uncolored_hills.png");
+            
+            File fHills = new File("assets/images/uncolored_hills.png");
             if(fHills.exists()) bgHills = ImageIO.read(fHills);
-            File fPiramids = new File("uncolored_piramids.png");
+            
+            File fPiramids = new File("assets/images/uncolored_piramids.png");
             if(fPiramids.exists()) bgPiramids = ImageIO.read(fPiramids);
-            File fForest = new File("uncolored_forest.png");
+            
+            File fForest = new File("assets/images/uncolored_forest.png");
             if(fForest.exists()) bgForest = ImageIO.read(fForest);
-            File fFlagA = new File("flag_blue_a.png");
+            
+            File fFlagA = new File("assets/images/flag_blue_a.png");
             if(fFlagA.exists()) flagImgA = ImageIO.read(fFlagA);
-            File fFlagB = new File("flag_blue_b.png");
+            
+            File fFlagB = new File("assets/images/flag_blue_b.png");
             if(fFlagB.exists()) flagImgB = ImageIO.read(fFlagB);
             
             for (int i = 0; i < 3; i++) {
                 File fc = new File(cloudFileNames[i]);
                 if (fc.exists()) cloudImages[i] = ImageIO.read(fc);
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            System.out.println("🚨 Lỗi tải ảnh trong GamePanel: Cảnh nền hoặc mây bị thiếu!");
+        }
 
         resetGame();
         currentState = State.VOICE_TEST; 
@@ -133,10 +147,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         } catch (Exception e) {}
     }
 
-    // Hàm public được gọi từ Main mỗi khi bấm nút PLAY ở MenuPanel
     public void resetToVoiceTest() {
         resetGame();
         currentState = State.VOICE_TEST;
+        fadeAlpha = 0f; 
         repaint();
     }
 
@@ -167,15 +181,55 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
+    // ==========================================
+    // LOGIC CHUYỂN CẢNH MỚI
+    // ==========================================
+    private void startTransition() {
+        if (currentState != State.VOICE_TEST) return;
+        
+        currentState = State.FADING_OUT;
+        SoundManager.playSound("assets/sounds/jump.wav"); // <--- Sửa đường dẫn
+        
+        fadeTimer = new Timer(30, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (currentState == State.FADING_OUT) {
+                    fadeAlpha += 0.05f;
+                    if (fadeAlpha >= 1.0f) {
+                        fadeAlpha = 1.0f;
+                        currentState = State.FADING_IN;
+                        
+                        resetGame(); 
+                        SoundManager.playBGM("assets/sounds/game_music.wav"); // <--- Sửa đường dẫn
+                    }
+                } else if (currentState == State.FADING_IN) {
+                    fadeAlpha -= 0.05f;
+                    if (fadeAlpha <= 0.0f) {
+                        fadeAlpha = 0.0f;
+                        fadeTimer.stop();
+                        currentState = State.PLAYING;
+                        startDelay = 40; 
+                    }
+                }
+                repaint();
+            }
+        });
+        fadeTimer.start();
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (currentState == State.FADING_OUT || currentState == State.FADING_IN) {
+            updateParallaxBackground(1); 
+            for (Cloud c : clouds) c.update(0); 
+            repaint();
+            return;
+        }
+
         if (currentState == State.VOICE_TEST) {
-            // Chỉ bắt đầu game khi vạch âm lượng vượt ngưỡng
             if (audioSensor != null && audioSensor.isCalibrated()) {
                 if (audioSensor.getCurrentVolume() >= jumpThreshold) {
-                    currentState = State.PLAYING;
-                    startDelay = 40; 
-                    SoundManager.playSound("jump.wav");
+                    startTransition(); 
                 }
             }
             updateParallaxBackground(1); 
@@ -204,7 +258,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 score += 1;
                 walkSoundTimer++;
                 if (walkSoundTimer >= 14 && player.isGrounded()) {
-                    SoundManager.playSound("walk.wav");
+                    SoundManager.playSound("assets/sounds/walk.wav"); // <--- Sửa đường dẫn
                     walkSoundTimer = 0;
                 }
             } else { walkSoundTimer = 14; }
@@ -252,7 +306,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
 
     private void handleGameOver() {
-        SoundManager.playSound("die.wav");
+        SoundManager.stopBGM(); 
+        SoundManager.playSound("assets/sounds/die.wav"); // <--- Sửa đường dẫn
+        
         int currentFinalScore = score / 10;
         if (currentFinalScore > highScore) {
             highScore = currentFinalScore;
@@ -303,13 +359,31 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         int currentDisplayScore = score / 10;
         boolean canSpawnObstacles = currentDisplayScore >= 100;
-        int obstacleChance = Math.min(95, 30 + (difficultyLevel * 15)); 
-        int advancedChance = Math.min(85, 10 + (difficultyLevel * 12)); 
+        
+        // ==========================================
+        // THUẬT TOÁN MỚI: TÁCH ONG VÀ CHUỘT
+        // ==========================================
+        
+        // 1. Quyết định xem Bục này có xuất hiện Ong hay không TRƯỚC
+        int beeChance = Math.min(80, 20 + (difficultyLevel * 10));
+        boolean willSpawnBee = canSpawnObstacles && (random.nextInt(100) < beeChance);
 
-        boolean hasObstacle1 = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
-        boolean hasObstacle2 = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25)); 
-        boolean hasAdvancedObstacle = canSpawnObstacles && (random.nextInt(100) < advancedChance);
+        // 2. Khởi tạo biến chướng ngại vật dưới đất mặc định là KHÔNG CÓ
+        boolean hasObstacle1 = false; // Chuột
+        boolean hasObstacle2 = false; // Cưa
+        boolean hasAdvancedObstacle = false; 
 
+        // 3. Nếu KHÔNG CÓ ONG, thì mới cho phép random xuất hiện Chuột/Cưa
+        if (!willSpawnBee) {
+            int obstacleChance = Math.min(95, 30 + (difficultyLevel * 15)); 
+            int advancedChance = Math.min(85, 10 + (difficultyLevel * 12)); 
+
+            hasObstacle1 = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
+            hasObstacle2 = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25)); 
+            hasAdvancedObstacle = canSpawnObstacles && (random.nextInt(100) < advancedChance);
+        }
+
+        // Tạo bục với các thông số vừa tính toán
         Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300, hasObstacle1, hasObstacle2, hasAdvancedObstacle);
         
         if (currentDisplayScore < 100 || random.nextInt(100) > 20) {
@@ -318,13 +392,14 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         platforms.add(newPlatform);
         
         if (canSpawnObstacles) {
+            // Sinh thiên thạch rơi ở giữa các khoảng trống
             int gapObstacleChance = Math.min(90, 25 + (difficultyLevel * 10)); 
-            int beeChance = Math.min(80, 20 + (difficultyLevel * 10));
-
             if (gap > 220 && random.nextInt(100) < gapObstacleChance) {
                 fallingObjects.add(new FallingObject(last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3)));
             }
-            if (random.nextInt(100) < beeChance) {
+            
+            // 4. Nếu lúc nãy đã quyết định sinh Ong, thì bây giờ ném Ong vào game
+            if (willSpawnBee) {
                 bees.add(new Bee(nextX + random.nextInt(nextWidth), 100 + random.nextInt(150), 120)); 
             }
         }
@@ -359,28 +434,28 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         Graphics2D g2d = (Graphics2D) g;
 
         g2d.setColor(new Color(193, 227, 245)); 
-        g2d.fillRect(0, 0, WIDTH, HEIGHT); 
+        g2d.fillRect(0, 0, getWidth(), getHeight()); 
         
         if (bgPlain != null) {
-            g2d.drawImage(bgPlain, (int)plainX, 0, WIDTH, HEIGHT, null);
-            g2d.drawImage(bgPlain, (int)plainX + WIDTH, 0, WIDTH, HEIGHT, null);
+            g2d.drawImage(bgPlain, (int)plainX, 0, WIDTH, getHeight(), null);
+            g2d.drawImage(bgPlain, (int)plainX + WIDTH, 0, WIDTH, getHeight(), null);
         }
         if (bgHills != null) {
-            g2d.drawImage(bgHills, (int)hillsX, 0, WIDTH, HEIGHT, null);
-            g2d.drawImage(bgHills, (int)hillsX + WIDTH, 0, WIDTH, HEIGHT, null);
+            g2d.drawImage(bgHills, (int)hillsX, 0, WIDTH, getHeight(), null);
+            g2d.drawImage(bgHills, (int)hillsX + WIDTH, 0, WIDTH, getHeight(), null);
         }
         if (bgPiramids != null) {
-            g2d.drawImage(bgPiramids, (int)piramidsX, 0, WIDTH, HEIGHT, null);
-            g2d.drawImage(bgPiramids, (int)piramidsX + WIDTH, 0, WIDTH, HEIGHT, null);
+            g2d.drawImage(bgPiramids, (int)piramidsX, 0, WIDTH, getHeight(), null);
+            g2d.drawImage(bgPiramids, (int)piramidsX + WIDTH, 0, WIDTH, getHeight(), null);
         }
         if (bgForest != null) {
-            g2d.drawImage(bgForest, (int)forestX, 0, WIDTH, HEIGHT, null);
-            g2d.drawImage(bgForest, (int)forestX + WIDTH, 0, WIDTH, HEIGHT, null);
+            g2d.drawImage(bgForest, (int)forestX, 0, WIDTH, getHeight(), null);
+            g2d.drawImage(bgForest, (int)forestX + WIDTH, 0, WIDTH, getHeight(), null);
         }
 
         for (Cloud c : clouds) c.draw(g2d);
 
-        if (currentState != State.VOICE_TEST) {
+        if (currentState != State.VOICE_TEST && currentState != State.FADING_OUT) {
             for (Platform p : platforms) p.draw(g2d); 
             for (Bee b : bees) b.draw(g2d);
             for (FallingObject fo : fallingObjects) fo.draw(g2d);
@@ -401,14 +476,21 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
 
         drawUI(g2d);
+
+        if (fadeAlpha > 0f) {
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f)); 
+        }
     }
 
     private void drawUI(Graphics2D g2d) {
         long time = System.currentTimeMillis();
 
-        if (currentState == State.VOICE_TEST) {
+        if (currentState == State.VOICE_TEST || currentState == State.FADING_OUT) {
             g2d.setColor(new Color(0, 0, 0, 150)); 
-            g2d.fillRect(0, 0, WIDTH, HEIGHT);
+            g2d.fillRect(0, 0, getWidth(), getHeight()); 
             
             if (audioSensor != null) {
                 int v = (int) audioSensor.getCurrentVolume();
@@ -433,7 +515,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
             g2d.setFont(new Font("Monospaced", Font.BOLD, 22));
             g2d.setColor(Color.WHITE);
-            if (time % 1000 < 600) {
+            if (currentState != State.FADING_OUT && time % 1000 < 600) {
                 g2d.drawString(">>> HÉT VƯỢT VẠCH VÀNG ĐỂ BẮT ĐẦU <<<", WIDTH/2 - 235, HEIGHT/2 + 120);
             }
             
@@ -460,7 +542,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         g2d.setColor(Color.BLACK); g2d.drawString(lT, WIDTH - 148, 47);
         g2d.setColor(new Color(255, 69, 0)); g2d.drawString(lT, WIDTH - 150, 45);
 
-        if (audioSensor != null && currentState == State.PLAYING) {
+        if (audioSensor != null && (currentState == State.PLAYING || currentState == State.FADING_IN)) {
             g2d.setFont(new Font("Monospaced", Font.BOLD, 20));
             String micText = "🎤 MIC:";
             g2d.setColor(Color.BLACK); g2d.drawString(micText, WIDTH/2 - 168, 47);
@@ -484,7 +566,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         
         if (currentState == State.GAMEOVER) {
-            g2d.setColor(new Color(0, 0, 0, 210)); g2d.fillRect(0, 0, WIDTH, HEIGHT);
+            g2d.setColor(new Color(0, 0, 0, 210)); 
+            g2d.fillRect(0, 0, getWidth(), getHeight()); 
             g2d.setFont(new Font("Monospaced", Font.BOLD, 80));
             g2d.setColor(new Color(255, 50, 50)); g2d.drawString("THẤT BẠI!", WIDTH/2 - 220, HEIGHT/2 - 60);
             
@@ -511,6 +594,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             resetGame(); 
             currentState = State.PLAYING; 
             startDelay = 40; 
+            
+            SoundManager.playBGM("assets/sounds/game_music.wav"); // <--- Sửa đường dẫn
         }
         
         if (currentState == State.VOICE_TEST && e.getKeyCode() == KeyEvent.VK_UP) {
@@ -523,7 +608,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     @Override public void keyReleased(KeyEvent e) {}
     @Override public void keyTyped(KeyEvent e) {}
 
-    // --- HÀM SET SKIN TỪ MÀN HÌNH MENU ---
     public void setPlayerSkin(String color) {
         if (player != null) {
             player.loadCharacterImages(color);

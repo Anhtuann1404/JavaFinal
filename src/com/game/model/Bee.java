@@ -29,8 +29,8 @@ public class Bee {
         
         // Tải 2 file ảnh: 1 cái cánh nâng lên, 1 cái cánh hạ xuống
         try {
-            imgWingUp = ImageIO.read(new File("bee_a.png"));
-            imgWingDown = ImageIO.read(new File("bee_b.png"));
+            imgWingUp = ImageIO.read(new File("assets/images/bee_a.png"));
+            imgWingDown = ImageIO.read(new File("assets/images/bee_b.png"));
         } catch (Exception e) {}
     }
 

@@ -1,67 +1,64 @@
 package com.game.controller;
-import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
 
-import com.game.view.GamePanel;
+import javax.swing.JFrame;
+import java.awt.CardLayout;
+import javax.swing.JPanel;
 import com.game.view.MenuPanel;
+import com.game.view.GamePanel;
 
 public class Main extends JFrame {
+    private CardLayout cardLayout;
+    private JPanel mainContainer;
     private MenuPanel menuPanel;
     private GamePanel gamePanel;
 
     public Main() {
-        // 1. Thiết lập cow banr tieeu ddeef vaf thuoocj tinh cho cua so
-        setTitle("Đồ Án: Audio Jump Game - Scream Warrior");
+        setTitle("Scream Runner");
+        
+        // Kích thước này bao gồm cả viền cửa sổ (Window borders)
+        // Để GamePanel và MenuPanel bên trong giữ đúng tỷ lệ 950x600
+        setSize(965, 639); 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setResizable(false); // Khóa kích thước 
+        setLocationRelativeTo(null); // Giữa màn hình
+        setResizable(false); // Khóa phóng to thu nhỏ để tránh vỡ giao diện
 
-        // 2. Khởi tạo Menu 
-        showMenu();
+        cardLayout = new CardLayout();
+        mainContainer = new JPanel(cardLayout);
 
-        // 3. Hiển thị cửa sổ
-        pack(); // Tự động đóng gói kích thước dựa trên Panel bên trong (950x600)
-        setLocationRelativeTo(null); // Đưa cửa sổ ra chính giữa màn hình máy tính
-        setVisible(true);
-    }
-
-    // Hàm hiển thị màn hình Menu
-    public void showMenu() {
-        if (gamePanel != null) {
-            remove(gamePanel);
-        }
-        menuPanel = new MenuPanel(this);
-        add(menuPanel);
-        revalidate();
-        repaint();
-    }
-
-    // Hàm bắt đầu vào trò chơi (Được gọi khi nhấn nút PLAY trong MenuPanel)
-    public void startGame() {
-        // Xóa MenuPanel cũ đi
-        remove(menuPanel);
-        
-        // Khởi tạo GamePanel mới
+        // Khởi tạo 2 màn hình
         gamePanel = new GamePanel();
-        add(gamePanel);
+        menuPanel = new MenuPanel(this);
+
+        // Gắn vào khung chứa
+        mainContainer.add(menuPanel, "Menu");
+        mainContainer.add(gamePanel, "Game");
+
+        add(mainContainer);
         
-        // Làm tươi lại giao diện
-        revalidate();
-        repaint();
+        // --- XỬ LÝ KHỞI ĐỘNG ---
+        // 1. Hiển thị màn hình Menu đầu tiên
+        cardLayout.show(mainContainer, "Menu");
         
-        // QUAN TRỌNG: Yêu cầu bàn phím tập trung vào GamePanel để nhấn phím Space chơi lại được
-        gamePanel.requestFocusInWindow();
+        // 2. BẬT NHẠC NỀN MENU TỪ THƯ MỤC MỚI (Đã sửa đường dẫn)
+        SoundManager.playBGM("assets/sounds/menu_music.wav");
     }
 
-    public static void main(String[] args) {
-        // Chạy ứng dụng trên luồng sự kiện của Swing để đảm bảo an toàn giao diện
-        SwingUtilities.invokeLater(() -> {
-            new Main();
-        });
+    // Hàm gọi khi nhấn nút PLAY ở MenuPanel
+    public void startGame() {
+        SoundManager.stopBGM(); // Tắt nhạc menu
+        gamePanel.resetToVoiceTest(); // Đưa Game về trạng thái Test Mic
+        cardLayout.show(mainContainer, "Game"); // Lật sang màn hình Game
+        gamePanel.requestFocusInWindow(); // Lấy tiêu điểm bàn phím cho GamePanel
     }
+
+    // Hàm gọi khi chọn nhân vật ở bảng Skin trong MenuPanel
     public void updatePlayerSkin(String color) {
-        // 'gamePanel' là biến chứa màn hình game của bạn, hãy sửa tên cho đúng nếu của bạn khác
         if (gamePanel != null) {
             gamePanel.setPlayerSkin(color);
         }
+    }
+
+    public static void main(String[] args) {
+        new Main().setVisible(true);
     }
 }

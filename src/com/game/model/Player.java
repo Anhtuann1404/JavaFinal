@@ -34,9 +34,10 @@ public class Player {
     public void loadCharacterImages(String color) {
         this.currentColor = color;
         
-        String pathJump = "character_" + color + "_jump.png";
-        String pathWalkA = "character_" + color + "_walk_a.png";
-        String pathWalkB = "character_" + color + "_walk_b.png";
+        // SỬA Ở ĐÂY: Thêm "assets/images/" vào trước tên file
+        String pathJump = "assets/images/character_" + color + "_jump.png";
+        String pathWalkA = "assets/images/character_" + color + "_walk_a.png";
+        String pathWalkB = "assets/images/character_" + color + "_walk_b.png";
         
         try {
             File fJump = new File(pathJump);
@@ -70,7 +71,7 @@ public class Player {
         y += velY;
 
         animTimer++;
-        if (animTimer > 20) { 
+        if (animTimer > 50) { 
             useWalkA = !useWalkA;
             animTimer = 0;
         }
