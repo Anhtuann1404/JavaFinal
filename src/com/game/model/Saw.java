@@ -22,8 +22,8 @@ public class Saw {
         this.height = height;
 
         try {
-            if (imgSawA == null) imgSawA = ImageIO.read(new File("assets/images/saw_a.png"));
-            if (imgSawB == null) imgSawB = ImageIO.read(new File("assets/images/saw_b.png"));
+            if (imgSawA == null) imgSawA = ImageIO.read(new File("assets/images/objects/plain/saw_a.png"));
+            if (imgSawB == null) imgSawB = ImageIO.read(new File("assets/images/objects/plain/saw_b.png"));
         } catch (Exception e) {}
     }
 

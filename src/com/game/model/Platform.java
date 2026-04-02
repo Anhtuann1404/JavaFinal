@@ -190,23 +190,23 @@ public class Platform {
     // --- HÀM NẠP ẢNH ĐÃ SỬA ĐƯỜNG DẪN ---
     private static void loadImages() {
         try {
-            if (imgTopLeft == null) imgTopLeft = ImageIO.read(new File("assets/images/terrain_grass_block_top_left.png"));
-            if (imgTopCenter == null) imgTopCenter = ImageIO.read(new File("assets/images/terrain_grass_block_top.png"));
-            if (imgTopRight == null) imgTopRight = ImageIO.read(new File("assets/images/terrain_grass_block_top_right.png"));
-            if (imgBodyLeft == null) imgBodyLeft = ImageIO.read(new File("assets/images/terrain_grass_block_left.png"));
-            if (imgBodyCenter == null) imgBodyCenter = ImageIO.read(new File("assets/images/terrain_grass_block_center.png"));
-            if (imgBodyRight == null) imgBodyRight = ImageIO.read(new File("assets/images/terrain_grass_block_right.png"));
+            if (imgTopLeft == null) imgTopLeft = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top_left.png"));
+            if (imgTopCenter == null) imgTopCenter = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top.png"));
+            if (imgTopRight == null) imgTopRight = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top_right.png"));
+            if (imgBodyLeft == null) imgBodyLeft = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_left.png"));
+            if (imgBodyCenter == null) imgBodyCenter = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_center.png"));
+            if (imgBodyRight == null) imgBodyRight = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_right.png"));
             
-            if (imgTree34 == null) imgTree34 = ImageIO.read(new File("assets/images/tree34.png"));
-            if (imgTree27 == null) imgTree27 = ImageIO.read(new File("assets/images/tree27.png"));
-            if (imgGrass4 == null) imgGrass4 = ImageIO.read(new File("assets/images/grass4.png"));
-            if (imgGrass2 == null) imgGrass2 = ImageIO.read(new File("assets/images/grass2.png"));
+            if (imgTree34 == null) imgTree34 = ImageIO.read(new File("assets/images/terrain/plain/tree34.png"));
+            if (imgTree27 == null) imgTree27 = ImageIO.read(new File("assets/images/terrain/plain/tree27.png"));
+            if (imgGrass4 == null) imgGrass4 = ImageIO.read(new File("assets/images/terrain/plain/grass4.png"));
+            if (imgGrass2 == null) imgGrass2 = ImageIO.read(new File("assets/images/terrain/plain/grass2.png"));
             
-            if (imgCactus == null) imgCactus = ImageIO.read(new File("assets/images/cactus.png"));
-            if (imgNewGrass == null) imgNewGrass = ImageIO.read(new File("assets/images/grass.png"));
+            if (imgCactus == null) imgCactus = ImageIO.read(new File("assets/images/terrain/desert/cactus.png"));
+            if (imgNewGrass == null) imgNewGrass = ImageIO.read(new File("assets/images/terrain/plain/grass.png"));
             
-            if (imgFence == null) imgFence = ImageIO.read(new File("assets/images/fence.png"));
-            if (imgFenceBroken == null) imgFenceBroken = ImageIO.read(new File("assets/images/fence_broken.png"));
+            if (imgFence == null) imgFence = ImageIO.read(new File("assets/images/terrain/plain/fence.png"));
+            if (imgFenceBroken == null) imgFenceBroken = ImageIO.read(new File("assets/images/terrain/desert/fence_broken.png"));
         } catch (Exception e) {
             System.out.println("🚨 Lỗi tải ảnh trong Platform: " + e.getMessage());
         }

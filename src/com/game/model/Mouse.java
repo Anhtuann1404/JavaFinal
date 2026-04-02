@@ -25,8 +25,8 @@ public class Mouse {
         this.height = height;
 
         try {
-            if (imgWalkA == null) imgWalkA = ImageIO.read(new File("assets/images/mouse_walk_a.png"));
-            if (imgWalkB == null) imgWalkB = ImageIO.read(new File("assets/images/mouse_walk_b.png"));
+            if (imgWalkA == null) imgWalkA = ImageIO.read(new File("assets/images/objects/plain/mouse_walk_a.png"));
+            if (imgWalkB == null) imgWalkB = ImageIO.read(new File("assets/images/objects/plain/mouse_walk_b.png"));
         } catch (Exception e) {}
     }
 

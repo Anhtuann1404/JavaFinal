@@ -69,9 +69,9 @@ public class MenuPanel extends JPanel implements MouseListener {
 
         // 1. TẢI ẢNH NỀN & ẢNH SKIN TỪ FOLDER MỚI
         try {
-            menuBg = ImageIO.read(new File("assets/images/menu_bg_new.png")); 
+            menuBg = ImageIO.read(new File("assets/images/ui/menu_bg_new.png")); 
             for (int i = 0; i < 4; i++) {
-                File f = new File("assets/images/character_" + characterColors[i] + "_jump.png");
+                File f = new File("assets/images/player/character_" + characterColors[i] + "_jump.png");
                 if (f.exists()) charMenuImages[i] = ImageIO.read(f);
             }
         } catch (Exception e) {
@@ -92,7 +92,7 @@ public class MenuPanel extends JPanel implements MouseListener {
         int btnH = 160;
 
         playBtn = new RoundButton();
-        createRoundButtonImage(playBtn, "assets/images/btn_play_round.png", btnW, btnH);
+        createRoundButtonImage(playBtn, "assets/images/ui/btn_play_round.png", btnW, btnH);
         playBtn.setBounds(305, 365, btnW, btnH); 
         playBtn.addActionListener(e -> {
             SoundManager.playSound("assets/sounds/jump.wav"); 
@@ -102,7 +102,7 @@ public class MenuPanel extends JPanel implements MouseListener {
         this.add(playBtn);
 
         guideBtn = new RoundButton();
-        createRoundButtonImage(guideBtn, "assets/images/btn_guide_round.png", btnW, btnH);
+        createRoundButtonImage(guideBtn, "assets/images/ui/btn_guide_round.png", btnW, btnH);
         guideBtn.setBounds(170, 350, btnW, btnH); 
         guideBtn.addActionListener(e -> {
             SoundManager.playSound("assets/sounds/jump.wav"); 
@@ -112,7 +112,7 @@ public class MenuPanel extends JPanel implements MouseListener {
         this.add(guideBtn);
 
         skinsBtn = new RoundButton();
-        createRoundButtonImage(skinsBtn, "assets/images/btn_skins_round.png", btnW, btnH);
+        createRoundButtonImage(skinsBtn, "assets/images/ui/btn_skins_round.png", btnW, btnH);
         skinsBtn.setBounds(445, 350, btnW, btnH); 
         skinsBtn.addActionListener(e -> {
             SoundManager.playSound("assets/sounds/jump.wav"); 

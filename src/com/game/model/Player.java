@@ -35,9 +35,9 @@ public class Player {
         this.currentColor = color;
         
         // SỬA Ở ĐÂY: Thêm "assets/images/" vào trước tên file
-        String pathJump = "assets/images/character_" + color + "_jump.png";
-        String pathWalkA = "assets/images/character_" + color + "_walk_a.png";
-        String pathWalkB = "assets/images/character_" + color + "_walk_b.png";
+        String pathJump = "assets/images/player/character_" + color + "_jump.png";
+        String pathWalkA = "assets/images/player/character_" + color + "_walk_a.png";
+        String pathWalkB = "assets/images/player/character_" + color + "_walk_b.png";
         
         try {
             File fJump = new File(pathJump);

@@ -96,16 +96,16 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         loadHighScore(); 
         
         try { 
-            File fPlain = new File("assets/images/uncolored_plain.png");
+            File fPlain = new File("assets/images/bg/plain/uncolored_plain.png");
             if(fPlain.exists()) bgPlain = ImageIO.read(fPlain);
             
-            File fHills = new File("assets/images/uncolored_hills.png");
+            File fHills = new File("assets/images/bg/plain/uncolored_hills.png");
             if(fHills.exists()) bgHills = ImageIO.read(fHills);
             
-            File fPiramids = new File("assets/images/uncolored_piramids.png");
+            File fPiramids = new File("assets/images/bg/plain/uncolored_piramids.png");
             if(fPiramids.exists()) bgPiramids = ImageIO.read(fPiramids);
             
-            File fForest = new File("assets/images/uncolored_forest.png");
+            File fForest = new File("assets/images/bg/plain/uncolored_forest.png");
             if(fForest.exists()) bgForest = ImageIO.read(fForest);
             
             File fFlagA = new File("assets/images/flag_blue_a.png");
