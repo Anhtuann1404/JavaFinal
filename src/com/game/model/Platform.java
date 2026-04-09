@@ -57,8 +57,12 @@ public class Platform {
             System.out.println("🚨 Lỗi tải ảnh trong Platform: " + e.getMessage());
         }
     }
+<<<<<<< HEAD
 
     // --- CHƯỚNG NGẠI VẬT & COIN ---
+=======
+// --- CHƯỚNG NGẠI VẬT & COIN ---
+>>>>>>> e1b303dbbe9d1b3ecff920bc842441ff279cbb8b
     public Mouse mouse;
     public Saw saw;
     public List<Coin> coins = new ArrayList<>();
@@ -134,7 +138,11 @@ public class Platform {
 
                 boolean collides = false;
                 for (Rectangle occ : occupiedSpaces) {
+<<<<<<< HEAD
                     if (proposed.intersects(occ)) { collides = true; break; }
+=======
+if (proposed.intersects(occ)) { collides = true; break; }
+>>>>>>> e1b303dbbe9d1b3ecff920bc842441ff279cbb8b
                 }
 
                 if (!collides) {
@@ -207,7 +215,11 @@ public class Platform {
         // --------------------------------------------------
         if (!hasMouse && !hasSaw && !hasAdvancedObstacle && this.width >= 150) {
             int numCoins   = rand.nextInt(3) + 1;
+<<<<<<< HEAD
             int spacing    = 45;
+=======
+int spacing    = 45;
+>>>>>>> e1b303dbbe9d1b3ecff920bc842441ff279cbb8b
             int startCoinX = this.x + (this.width / 2) - ((numCoins * spacing) / 2);
             for (int i = 0; i < numCoins; i++) {
                 coins.add(new Coin(startCoinX + (i * spacing), y - 150));

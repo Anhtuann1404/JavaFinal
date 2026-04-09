@@ -363,63 +363,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    private void generateNextPlatform() {
-        if (platforms.isEmpty()) return;
-        Platform last = platforms.get(platforms.size() - 1);
-     
-        // =============================================
-        // CẢI TIẾN 3: GIỚI HẠN GAP THEO VẬT LÝ NHẢY
-        // JUMP_FORCE = 17, GRAVITY = 0.8
-        // Max height ≈ 17² / (2 × 0.8) ≈ 180px
-        // Max horizontal distance khi nhảy ≈ 280px (buffer an toàn)
-        // → Cap gap tại 280 bất kể difficulty để luôn có thể vượt được
-        // =============================================
-        final int MAX_SAFE_GAP = 280;
-        int gap = 160 + random.nextInt(Math.min(MAX_SAFE_GAP - 160,
-                                                150 + (difficultyLevel * 10)));
-     
-        int nextX     = last.x + last.width + gap;
-        int nextY     = Math.max(250, Math.min(520, last.y + (random.nextInt(160) - 80)));
-        int nextWidth = Math.max(150, 250 - (difficultyLevel * 5)) + random.nextInt(150);
-     
-        int currentDisplayScore = score / 10;
-        boolean canSpawnObstacles = currentDisplayScore >= 100;
-     
-        int beeChance    = Math.min(80, 20 + (difficultyLevel * 10));
-        boolean willSpawnBee = canSpawnObstacles && (random.nextInt(100) < beeChance);
-     
-        boolean hasObstacle1       = false;
-        boolean hasObstacle2       = false;
-        boolean hasAdvancedObstacle = false;
-     
-        if (!willSpawnBee) {
-            int obstacleChance  = Math.min(95, 30 + (difficultyLevel * 15));
-            int advancedChance  = Math.min(85, 10 + (difficultyLevel * 12));
-            hasObstacle1        = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
-            hasObstacle2        = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25));
-            hasAdvancedObstacle = canSpawnObstacles && (random.nextInt(100) < advancedChance);
-        }
-     
-        Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300,
-                                            hasObstacle1, hasObstacle2, hasAdvancedObstacle);
-     
-        if (currentDisplayScore < 100 || random.nextInt(100) > 20) {
-            newPlatform.coins.clear();
-        }
-        platforms.add(newPlatform);
-     
-        if (canSpawnObstacles) {
-            int gapObstacleChance = Math.min(90, 25 + (difficultyLevel * 10));
-            if (gap > 220 && random.nextInt(100) < gapObstacleChance) {
-                fallingObjects.add(new FallingObject(
-                    last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3)));
-            }
-            if (willSpawnBee) {
-                bees.add(new Bee(nextX + random.nextInt(nextWidth),
-                                 100 + random.nextInt(150), 120));
-            }
-        }
-    }
+   
 
     private void updateMeteorTimer() {
         int currentDisplayScore = score / 10;

@@ -73,7 +73,7 @@ public class Main extends JFrame {
         gamePanel.setTheme(themeId); // Báo cho GamePanel biết người chơi chọn màn nào
         gamePanel.resetToVoiceTest(); // Đưa Game về trạng thái Test Mic
         cardLayout.show(mainContainer, "Game"); // Lật sang màn hình Game
-        gamePanel.requestFocusInWindow(); // Lấy tiêu điểm bàn phím cho GamePanel
+gamePanel.requestFocusInWindow(); // Lấy tiêu điểm bàn phím cho GamePanel
     }
 
     // ==========================================

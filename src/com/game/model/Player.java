@@ -86,7 +86,11 @@ public class Player {
 
         // --- XỬ LÝ VA CHẠM ---
         boolean landedThisFrame = false;
+<<<<<<< HEAD
         Rectangle pHitbox = getHitbox();
+=======
+Rectangle pHitbox = getHitbox();
+>>>>>>> e1b303dbbe9d1b3ecff920bc842441ff279cbb8b
 
         for (Platform p : platforms) {
             Rectangle pRect = new Rectangle(p.x, p.y, p.width, p.height);
@@ -140,4 +144,8 @@ public class Player {
     public void    setY(int y)      { this.y = y; }
     public boolean isGrounded()     { return isGrounded; }
     public String  getCurrentColor(){ return currentColor; }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> e1b303dbbe9d1b3ecff920bc842441ff279cbb8b
