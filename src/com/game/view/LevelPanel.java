@@ -80,11 +80,7 @@ public class LevelPanel extends JPanel implements MouseListener {
         
         // Vẽ nút Quay lại
         g2d.setFont(new Font("Monospaced", Font.PLAIN, 20));
-<<<<<<< HEAD
-        g2d.setColor(Color.YELLOW);
-=======
 g2d.setColor(Color.YELLOW);
->>>>>>> e1b303dbbe9d1b3ecff920bc842441ff279cbb8b
         g2d.drawString("[ QUAY LẠI MENU ]", backRect.x + 10, backRect.y + 30);
     }
 

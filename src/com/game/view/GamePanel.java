@@ -83,7 +83,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 this.img = cloudImages[random.nextInt(3)]; 
                 this.width = 80 + random.nextInt(100);
                 this.height = (int)(this.width * 0.6); 
-                this.windSpeed = 0.2f + random.nextFloat() * 0.8f; 
+this.windSpeed = 0.2f + random.nextFloat() * 0.8f; 
             }
         }
         public void draw(Graphics2D g) {
@@ -162,8 +162,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             bw.write(String.valueOf(highScore));
         } catch (Exception e) {}
     }
-
-    public void resetToVoiceTest() {
+public void resetToVoiceTest() {
         resetGame();
         currentState = State.VOICE_TEST;
         fadeAlpha = 0f; 
@@ -246,8 +245,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             repaint(); 
             return;
         }
-
-        if (currentState == State.GAMEOVER) { 
+if (currentState == State.GAMEOVER) { 
             updateParticles(); 
             repaint(); 
             return; 
@@ -335,7 +333,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         Rectangle pHit = player.getHitbox();
         for (Platform p : platforms) {
             if ((p.getMouseHitbox() != null && pHit.intersects(p.getMouseHitbox())) || 
-                (p.getSawHitbox() != null && pHit.intersects(p.getSawHitbox()))) {
+(p.getSawHitbox() != null && pHit.intersects(p.getSawHitbox()))) {
                 spawnExplosion(player.getX() + 30, player.getY() + 40, Color.RED);
                 handleGameOver(); 
                 return;
@@ -363,7 +361,63 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-   
+    private void generateNextPlatform() {
+        if (platforms.isEmpty()) return;
+        Platform last = platforms.get(platforms.size() - 1);
+     
+        // =============================================
+        // CẢI TIẾN 3: GIỚI HẠN GAP THEO VẬT LÝ NHẢY
+        // JUMP_FORCE = 17, GRAVITY = 0.8
+        // Max height ≈ 17² / (2 × 0.8) ≈ 180px
+        // Max horizontal distance khi nhảy ≈ 280px (buffer an toàn)
+        // → Cap gap tại 280 bất kể difficulty để luôn có thể vượt được
+        // =============================================
+        final int MAX_SAFE_GAP = 280;
+        int gap = 160 + random.nextInt(Math.min(MAX_SAFE_GAP - 160,
+                                                150 + (difficultyLevel * 10)));
+     
+        int nextX     = last.x + last.width + gap;
+        int nextY     = Math.max(250, Math.min(520, last.y + (random.nextInt(160) - 80)));
+        int nextWidth = Math.max(150, 250 - (difficultyLevel * 5)) + random.nextInt(150);
+     
+        int currentDisplayScore = score / 10;
+        boolean canSpawnObstacles = currentDisplayScore >= 100;
+     
+        int beeChance    = Math.min(80, 20 + (difficultyLevel * 10));
+        boolean willSpawnBee = canSpawnObstacles && (random.nextInt(100) < beeChance);
+     
+        boolean hasObstacle1       = false;
+        boolean hasObstacle2       = false;
+        boolean hasAdvancedObstacle = false;
+     
+        if (!willSpawnBee) {
+            int obstacleChance  = Math.min(95, 30 + (difficultyLevel * 15));
+            int advancedChance  = Math.min(85, 10 + (difficultyLevel * 12));
+            hasObstacle1        = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
+            hasObstacle2        = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25));
+            hasAdvancedObstacle = canSpawnObstacles && (random.nextInt(100) < advancedChance);
+        }
+     
+        Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300,
+hasObstacle1, hasObstacle2, hasAdvancedObstacle);
+     
+        if (currentDisplayScore < 100 || random.nextInt(100) > 20) {
+            newPlatform.coins.clear();
+        }
+        platforms.add(newPlatform);
+     
+        if (canSpawnObstacles) {
+            int gapObstacleChance = Math.min(90, 25 + (difficultyLevel * 10));
+            if (gap > 220 && random.nextInt(100) < gapObstacleChance) {
+                fallingObjects.add(new FallingObject(
+                    last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3)));
+            }
+            if (willSpawnBee) {
+                bees.add(new Bee(nextX + random.nextInt(nextWidth),
+                                 100 + random.nextInt(150), 120));
+            }
+        }
+    }
 
     private void updateMeteorTimer() {
         int currentDisplayScore = score / 10;
@@ -424,7 +478,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             g2d.drawImage(bgHills, (int)hillsX + WIDTH, 0, WIDTH, getHeight(), null);
         }
         if (bgPiramids != null) {
-            g2d.drawImage(bgPiramids, (int)piramidsX, 0, WIDTH, getHeight(), null);
+g2d.drawImage(bgPiramids, (int)piramidsX, 0, WIDTH, getHeight(), null);
             g2d.drawImage(bgPiramids, (int)piramidsX + WIDTH, 0, WIDTH, getHeight(), null);
         }
         if (bgForest != null) {
@@ -488,7 +542,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 else if (v >= walkThreshold) g2d.setColor(Color.ORANGE);
                 else g2d.setColor(Color.GREEN);
                 
-                g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, barWidth, 20);
+g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, barWidth, 20);
                 
                 g2d.setColor(Color.YELLOW);
                 g2d.fillRect(WIDTH/2 - 200 + targetWidth, HEIGHT/2 + 45, 4, 30);
@@ -553,7 +607,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         if (currentState == State.GAMEOVER) {
             g2d.setColor(new Color(0, 0, 0, 210)); 
-            g2d.fillRect(0, 0, getWidth(), getHeight()); 
+g2d.fillRect(0, 0, getWidth(), getHeight()); 
             g2d.setFont(new Font("Monospaced", Font.BOLD, 80));
             g2d.setColor(new Color(255, 50, 50)); g2d.drawString("THẤT BẠI!", WIDTH/2 - 220, HEIGHT/2 - 60);
             

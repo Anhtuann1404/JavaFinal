@@ -73,11 +73,7 @@ public class AudioSensor implements Runnable {
                     double cleanVolume = Math.max(0, volume - backgroundNoiseLevel);
 
                     // =============================================
-<<<<<<< HEAD
-                    // CẢI TIẾN 2 ÁP DỤNG Ở ĐÂY:
-=======
 // CẢI TIẾN 2 ÁP DỤNG Ở ĐÂY:
->>>>>>> e1b303dbbe9d1b3ecff920bc842441ff279cbb8b
                     // Đẩy giá trị vào buffer vòng (circular buffer)
                     // rồi tính trung bình → currentVolume mượt hơn
                     // =============================================
