@@ -9,18 +9,55 @@ import java.util.Random;
 
 public class Platform {
     public int x, y, width, height;
-    private int blockSize = 50; 
+    private static final int BLOCK_SIZE = 50;
+
+    // =============================================
+    // BUG FIX 1: Dùng static final thay vì magic number 600
+    // =============================================
+    private static final int SCREEN_HEIGHT = 600;
 
     // --- HÌNH ẢNH ĐỊA HÌNH CỎ (LÁT GẠCH) ---
     private static Image imgTopLeft, imgTopCenter, imgTopRight;
     private static Image imgBodyLeft, imgBodyCenter, imgBodyRight;
 
-    // --- HÌNH ẢNH TRANG TRÍ (GỘP CẢ CŨ VÀ MỚI) ---
+    // --- HÌNH ẢNH TRANG TRÍ ---
     private static Image imgTree34, imgTree27, imgCactus;
     private static Image imgGrass4, imgGrass2, imgNewGrass;
     private static Image imgFence, imgFenceBroken;
-    
-    // --- CHƯỚNG NGẠI VẬT & COIN ---
+
+    // =============================================
+    // BUG FIX 2: static Random dùng chung, không tạo mới mỗi lần
+    // =============================================
+    private static final Random rand = new Random();
+
+    // =============================================
+    // BUG FIX 3: static initializer block — chỉ load ảnh đúng 1 lần
+    // thay vì gọi loadImages() trong constructor mỗi lần new Platform()
+    // =============================================
+    static {
+        try {
+            imgTopLeft   = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top_left.png"));
+            imgTopCenter = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top.png"));
+            imgTopRight  = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top_right.png"));
+            imgBodyLeft  = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_left.png"));
+            imgBodyCenter= ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_center.png"));
+            imgBodyRight = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_right.png"));
+
+            imgTree34    = ImageIO.read(new File("assets/images/terrain/plain/tree34.png"));
+            imgTree27    = ImageIO.read(new File("assets/images/terrain/plain/tree27.png"));
+            imgGrass4    = ImageIO.read(new File("assets/images/terrain/plain/grass4.png"));
+            imgGrass2    = ImageIO.read(new File("assets/images/terrain/plain/grass2.png"));
+
+            imgCactus    = ImageIO.read(new File("assets/images/terrain/desert/cactus.png"));
+            imgNewGrass  = ImageIO.read(new File("assets/images/terrain/plain/grass.png"));
+
+            imgFence      = ImageIO.read(new File("assets/images/terrain/plain/fence.png"));
+            imgFenceBroken= ImageIO.read(new File("assets/images/terrain/desert/fence_broken.png"));
+        } catch (Exception e) {
+            System.out.println("🚨 Lỗi tải ảnh trong Platform: " + e.getMessage());
+        }
+    }
+// --- CHƯỚNG NGẠI VẬT & COIN ---
     public Mouse mouse;
     public Saw saw;
     public List<Coin> coins = new ArrayList<>();
@@ -29,60 +66,50 @@ public class Platform {
     public static class Decoration {
         Image img;
         int relX, relY, w, h;
-        Rectangle hitBox; 
+        // hitBox bỏ đi vì không được dùng ở đâu, tránh nhầm lẫn
 
         public Decoration(Image img, int relX, int relY, int w, int h) {
-            this.img = img; 
-            this.relX = relX; 
-            this.relY = relY; 
-            this.w = w; 
-            this.h = h;
-            this.hitBox = new Rectangle(relX, relY, w, h);
+            this.img  = img;
+            this.relX = relX;
+            this.relY = relY;
+            this.w    = w;
+            this.h    = h;
         }
     }
-    
-    // Danh sách đồ trang trí hiển thị
-    public List<Decoration> grassList = new ArrayList<>();
-    public List<Decoration> tallDecorList = new ArrayList<>(); 
-    public List<Decoration> fenceList = new ArrayList<>();
 
-    public Platform(int x, int y, int width, int height, boolean hasMouse, boolean hasSaw, boolean hasAdvancedObstacle) {
-        this.x = x;
-        this.y = y;
-        this.width = Math.max(150, (width / blockSize) * blockSize);
+    public List<Decoration> grassList     = new ArrayList<>();
+    public List<Decoration> tallDecorList = new ArrayList<>();
+    public List<Decoration> fenceList     = new ArrayList<>();
+
+    public Platform(int x, int y, int width, int height,
+                    boolean hasMouse, boolean hasSaw, boolean hasAdvancedObstacle) {
+        this.x      = x;
+        this.y      = y;
+        this.width  = Math.max(150, (width / BLOCK_SIZE) * BLOCK_SIZE);
         this.height = height;
 
-        // --- NẠP ẢNH ---
-        loadImages();
-
-        Random rand = new Random();
-
-        // --- DANH SÁCH TẠM ĐỂ KIỂM TRA VA CHẠM ĐỒ TRANG TRÍ ---
         List<Rectangle> occupiedSpaces = new ArrayList<>();
-        int decorPadding = 15; 
+        int decorPadding = 15;
 
-        // ==========================================
-        // --- SINH ĐỒ TRANG TRÍ ---
-        // ==========================================
-        
-        // 1. Sinh Hàng rào 
-        if (imgFence != null && rand.nextInt(100) < 60) { 
+        // --------------------------------------------------
+        // 1. Sinh Hàng rào
+        // --------------------------------------------------
+        if (imgFence != null && rand.nextInt(100) < 60) {
             Image fImg = rand.nextBoolean() ? imgFence : imgFenceBroken;
-            int rx = 10 + rand.nextInt(20); 
+            int rx = 10 + rand.nextInt(20);
             int fw = 50, fh = 40;
-            
-            Decoration fence = new Decoration(fImg, rx, -35, fw, fh);
-            fenceList.add(fence);
+            fenceList.add(new Decoration(fImg, rx, -35, fw, fh));
             occupiedSpaces.add(new Rectangle(rx - decorPadding, -35, fw + decorPadding * 2, fh));
         }
 
-        // 2. Sinh Đồ trang trí cao (Trộn ngẫu nhiên Cây cũ và Xương rồng mới)
-        int numTallDecors = 1 + rand.nextInt(2); 
+        // --------------------------------------------------
+        // 2. Sinh Đồ trang trí cao
+        // --------------------------------------------------
+        int numTallDecors = 1 + rand.nextInt(2);
         for (int i = 0; i < numTallDecors; i++) {
             Image decorImg = null;
             int tW = 0, tH = 0;
-            
-            // Random chọn loại cây (0: Cây 34, 1: Cây 27, 2: Xương rồng)
+
             int type = rand.nextInt(3);
             if (type == 0 && imgTree34 != null) {
                 decorImg = imgTree34;
@@ -97,33 +124,31 @@ public class Platform {
                 tW = 40 + rand.nextInt(15);
                 tH = 65 + rand.nextInt(20);
             }
-            
+
             if (decorImg == null) continue;
 
             for (int attempt = 0; attempt < 5; attempt++) {
                 int rx = rand.nextInt(Math.max(1, this.width - tW));
-                Rectangle proposedSpace = new Rectangle(rx - decorPadding, -tH, tW + decorPadding * 2, tH);
-                
+                Rectangle proposed = new Rectangle(rx - decorPadding, -tH, tW + decorPadding * 2, tH);
+
                 boolean collides = false;
-                for (Rectangle occupied : occupiedSpaces) {
-                    if (proposedSpace.intersects(occupied)) {
-                        collides = true;
-                        break;
-                    }
+                for (Rectangle occ : occupiedSpaces) {
+if (proposed.intersects(occ)) { collides = true; break; }
                 }
-                
+
                 if (!collides) {
-                    // Căn chỉnh y một chút để vật thể cắm xuống đất tự nhiên hơn
-                    int yOffset = (decorImg == imgCactus) ? 12 : 10; 
+                    int yOffset = (decorImg == imgCactus) ? 12 : 10;
                     tallDecorList.add(new Decoration(decorImg, rx, -tH + yOffset, tW, tH));
-                    occupiedSpaces.add(proposedSpace);
-                    break; 
+                    occupiedSpaces.add(proposed);
+                    break;
                 }
             }
         }
 
-        // 3. Sinh Cỏ (Trộn ngẫu nhiên 2 loại cỏ cũ và 1 loại cỏ mới)
-        int numGrass = 1 + rand.nextInt(3); 
+        // --------------------------------------------------
+        // 3. Sinh Cỏ
+        // --------------------------------------------------
+        int numGrass = 1 + rand.nextInt(3);
         for (int i = 0; i < numGrass; i++) {
             Image grassImg = null;
             int gW = 0, gH = 0;
@@ -147,39 +172,41 @@ public class Platform {
 
             for (int attempt = 0; attempt < 5; attempt++) {
                 int rx = rand.nextInt(Math.max(1, this.width - gW));
-                Rectangle proposedSpace = new Rectangle(rx - decorPadding/2, -gH, gW + decorPadding, gH);
-                
+                Rectangle proposed = new Rectangle(rx - decorPadding / 2, -gH, gW + decorPadding, gH);
+
                 boolean collides = false;
-                for (Rectangle occupied : occupiedSpaces) {
-                    if (proposedSpace.intersects(occupied)) {
-                        collides = true;
-                        break;
-                    }
+                for (Rectangle occ : occupiedSpaces) {
+                    if (proposed.intersects(occ)) { collides = true; break; }
                 }
-                
+
                 if (!collides) {
                     int yOffset = (grassImg == imgNewGrass) ? 8 : 5;
                     grassList.add(new Decoration(grassImg, rx, -gH + yOffset, gW, gH));
-                    occupiedSpaces.add(proposedSpace);
+                    occupiedSpaces.add(proposed);
                     break;
                 }
             }
         }
 
-        // --- SINH CHƯỚNG NGẠI VẬT TRÊN BỤC ---
+        // --------------------------------------------------
+        // Sinh Chướng ngại vật
+        // --------------------------------------------------
         int obsX = this.x + (this.width / 2) - 20;
         if (hasMouse) {
             this.mouse = new Mouse(obsX, y - 30, 40, 30);
         } else if (hasSaw) {
             this.saw = new Saw(obsX, y - 45, 45, 45);
-        } else if (hasAdvancedObstacle) { 
+        } else if (hasAdvancedObstacle) {
             this.saw = new Saw(this.x + this.width - 70, y - 45, 45, 45);
         }
 
-        // --- SINH VÀNG ---
-        if (!hasMouse && !hasSaw && this.width >= 150) {
-            int numCoins = rand.nextInt(3) + 1;
-            int spacing = 45;
+        // --------------------------------------------------
+        // BUG FIX 4: Thêm !hasAdvancedObstacle vào điều kiện spawn coin
+        // Trước đây coin vẫn spawn đè lên Saw khi hasAdvancedObstacle = true
+        // --------------------------------------------------
+        if (!hasMouse && !hasSaw && !hasAdvancedObstacle && this.width >= 150) {
+            int numCoins   = rand.nextInt(3) + 1;
+int spacing    = 45;
             int startCoinX = this.x + (this.width / 2) - ((numCoins * spacing) / 2);
             for (int i = 0; i < numCoins; i++) {
                 coins.add(new Coin(startCoinX + (i * spacing), y - 150));
@@ -187,33 +214,9 @@ public class Platform {
         }
     }
 
-    // --- HÀM NẠP ẢNH ĐÃ SỬA ĐƯỜNG DẪN ---
-    private static void loadImages() {
-        try {
-            if (imgTopLeft == null) imgTopLeft = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top_left.png"));
-            if (imgTopCenter == null) imgTopCenter = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top.png"));
-            if (imgTopRight == null) imgTopRight = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top_right.png"));
-            if (imgBodyLeft == null) imgBodyLeft = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_left.png"));
-            if (imgBodyCenter == null) imgBodyCenter = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_center.png"));
-            if (imgBodyRight == null) imgBodyRight = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_right.png"));
-            
-            if (imgTree34 == null) imgTree34 = ImageIO.read(new File("assets/images/terrain/plain/tree34.png"));
-            if (imgTree27 == null) imgTree27 = ImageIO.read(new File("assets/images/terrain/plain/tree27.png"));
-            if (imgGrass4 == null) imgGrass4 = ImageIO.read(new File("assets/images/terrain/plain/grass4.png"));
-            if (imgGrass2 == null) imgGrass2 = ImageIO.read(new File("assets/images/terrain/plain/grass2.png"));
-            
-            if (imgCactus == null) imgCactus = ImageIO.read(new File("assets/images/terrain/desert/cactus.png"));
-            if (imgNewGrass == null) imgNewGrass = ImageIO.read(new File("assets/images/terrain/plain/grass.png"));
-            
-            if (imgFence == null) imgFence = ImageIO.read(new File("assets/images/terrain/plain/fence.png"));
-            if (imgFenceBroken == null) imgFenceBroken = ImageIO.read(new File("assets/images/terrain/desert/fence_broken.png"));
-        } catch (Exception e) {
-            System.out.println("🚨 Lỗi tải ảnh trong Platform: " + e.getMessage());
-        }
-    }
-
     public void update(int scrollSpeed) {
         this.x -= scrollSpeed;
+
         if (mouse != null) {
             mouse.y = this.y - mouse.height + 5;
             mouse.update(scrollSpeed, this.x, this.width);
@@ -223,41 +226,45 @@ public class Platform {
             saw.update(scrollSpeed);
         }
         for (Coin c : coins) {
-            c.update(scrollSpeed, this.y - 150); 
+            c.update(scrollSpeed, this.y - 150);
         }
     }
 
     public void draw(Graphics2D g2d) {
-        int numCols = width / blockSize;
-        int numRows = (600 - y) / blockSize + 1;
+        int numCols = width / BLOCK_SIZE;
+        // BUG FIX 1 áp dụng ở đây: dùng hằng số thay vì magic number 600
+        int numRows = (SCREEN_HEIGHT - y) / BLOCK_SIZE + 1;
 
         for (int r = 0; r < numRows; r++) {
             for (int c = 0; c < numCols; c++) {
-                int drawX = x + (c * blockSize);
-                int drawY = y + (r * blockSize);
-                Image blockImg = null;
+                int drawX = x + (c * BLOCK_SIZE);
+                int drawY = y + (r * BLOCK_SIZE);
+                Image blockImg;
+
                 if (r == 0) {
-                    if (c == 0) blockImg = imgTopLeft;                 
-                    else if (c == numCols - 1) blockImg = imgTopRight; 
-                    else blockImg = imgTopCenter;                      
+                    if      (c == 0)           blockImg = imgTopLeft;
+                    else if (c == numCols - 1) blockImg = imgTopRight;
+                    else                       blockImg = imgTopCenter;
                 } else {
-                    if (c == 0) blockImg = imgBodyLeft;                 
-                    else if (c == numCols - 1) blockImg = imgBodyRight; 
-                    else blockImg = imgBodyCenter;                      
+                    if      (c == 0)           blockImg = imgBodyLeft;
+                    else if (c == numCols - 1) blockImg = imgBodyRight;
+                    else                       blockImg = imgBodyCenter;
                 }
-                if (blockImg != null) g2d.drawImage(blockImg, drawX, drawY, blockSize, blockSize, null);
+
+                if (blockImg != null)
+                    g2d.drawImage(blockImg, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE, null);
             }
         }
 
-        for (Decoration d : fenceList) g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
+        for (Decoration d : fenceList)     g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
         for (Decoration d : tallDecorList) g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
-        for (Decoration d : grassList) g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
+        for (Decoration d : grassList)     g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
 
         if (mouse != null) mouse.draw(g2d);
-        if (saw != null) saw.draw(g2d);
+        if (saw   != null) saw.draw(g2d);
         for (Coin c : coins) c.draw(g2d);
     }
 
     public Rectangle getMouseHitbox() { return mouse != null ? mouse.getMouseHitbox() : null; }
-    public Rectangle getSawHitbox() { return saw != null ? saw.getHitbox() : null; }
+    public Rectangle getSawHitbox()   { return saw   != null ? saw.getHitbox()        : null; }
 }

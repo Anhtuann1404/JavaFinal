@@ -49,6 +49,7 @@ public class MenuPanel extends JPanel implements MouseListener {
             setContentAreaFilled(false); 
             setBorderPainted(false); 
             setFocusPainted(false); 
+            setFocusable(false); // Thêm dòng này để KHÔNG bị lỗi kẹt phím Space ở GamePanel
         }
 
         @Override
@@ -81,7 +82,7 @@ public class MenuPanel extends JPanel implements MouseListener {
         // Tọa độ 4 ô chọn Skin và nút Back 
         int startX = 245; 
         for (int i = 0; i < 4; i++) {
-            charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 120);
+charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 120);
         }
         backRect = new Rectangle(WIDTH/2 - 350, HEIGHT - 80, 700, 50);
 
@@ -96,8 +97,9 @@ public class MenuPanel extends JPanel implements MouseListener {
         playBtn.setBounds(305, 365, btnW, btnH); 
         playBtn.addActionListener(e -> {
             SoundManager.playSound("assets/sounds/jump.wav"); 
-            System.out.println("---> Clicked: PLAY");
-            mainFrame.startGame(); 
+            System.out.println("---> Clicked: PLAY -> TỚI CHỌN MÀN");
+            // ĐÃ SỬA Ở ĐÂY: Trỏ tới màn hình Chọn Level thay vì vào thẳng Game
+            mainFrame.showLevelSelection(); 
         });
         this.add(playBtn);
 
@@ -150,8 +152,7 @@ public class MenuPanel extends JPanel implements MouseListener {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
-        
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
@@ -210,7 +211,7 @@ public class MenuPanel extends JPanel implements MouseListener {
             
             g2d.setFont(new Font("Monospaced", Font.PLAIN, 20));
             g2d.setColor(Color.YELLOW);
-            g2d.drawString("[ NHẤP CHUỘT CHỌN NHÂN VẬT - BẤM VÀO ĐÂY ĐỂ QUAY LẠI ]", WIDTH/2 - 320, HEIGHT - 50);
+g2d.drawString("[ NHẤP CHUỘT CHỌN NHÂN VẬT - BẤM VÀO ĐÂY ĐỂ QUAY LẠI ]", WIDTH/2 - 320, HEIGHT - 50);
         }
     }
 
