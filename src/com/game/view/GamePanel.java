@@ -11,14 +11,20 @@ import java.util.List;
 import java.util.Random;
 
 import com.game.model.*;
+import com.game.controller.Main;
 import com.game.controller.SoundManager;
 
 public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private final int WIDTH = 950, HEIGHT = 600;
     
-    
     private enum State { VOICE_TEST, FADING_OUT, FADING_IN, PLAYING, GAMEOVER }
     private State currentState = State.VOICE_TEST; 
+    
+    // --- THÊM BIẾN MAIN ĐỂ KẾT NỐI VỚI BỘ ĐIỀU KHIỂN ---
+    private Main mainFrame;
+    
+    // --- THÊM BIẾN ĐỂ LƯU CHỦ ĐỀ (THEME) CỦA MÀN CHƠI ---
+    private int currentTheme = 0; 
     
     private Player player;
     private AudioSensor audioSensor;
@@ -31,13 +37,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private Image bgPlain, bgHills, bgPiramids, bgForest; 
     private float plainX = 0, hillsX = 0, piramidsX = 0, forestX = 0;
     private Image[] cloudImages = new Image[3]; 
-    
-    private String[] cloudFileNames = {
+    private String[] cloudFileNames = { 
         "assets/images/cloud4.png", 
         "assets/images/cloud5.png", 
-        "assets/images/cloud6.png"
+        "assets/images/cloud6.png" 
     }; 
-    
     private List<Cloud> clouds = new ArrayList<>();
     
     private Image flagImgA, flagImgB;
@@ -87,7 +91,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    public GamePanel() {
+    // ==========================================
+    // HÀM KHỞI TẠO ĐÃ ĐƯỢC CẬP NHẬT (THÊM MAIN)
+    // ==========================================
+    public GamePanel(Main mainFrame) {
+        this.mainFrame = mainFrame; // Nhận kết nối từ Main
+        
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setFocusable(true);
         this.addKeyListener(this); 
@@ -119,7 +128,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 if (fc.exists()) cloudImages[i] = ImageIO.read(fc);
             }
         } catch (Exception e) {
-            System.out.println("🚨 Lỗi tải ảnh trong GamePanel: Cảnh nền hoặc mây bị thiếu!");
+            System.out.println("🚨 Lỗi tải ảnh nền trong GamePanel!");
         }
 
         resetGame();
@@ -132,6 +141,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         
         gameTimer = new Timer(16, this); 
         gameTimer.start();
+    }
+
+    // ==========================================
+    // HÀM NHẬN CHỦ ĐỀ TỪ LEVEL PANEL
+    // ==========================================
+    public void setTheme(int themeId) {
+        this.currentTheme = themeId;
     }
 
     private void loadHighScore() {
@@ -157,9 +173,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void resetGame() {
         score = 0; difficultyLevel = 1; meteorSpawnTimer = 0; walkSoundTimer = 0; startDelay = 40; 
         plainX = 0; hillsX = 0; piramidsX = 0; forestX = 0;
-        platforms.clear(); bees.clear(); fallingObjects.clear(); particles.clear(); 
+        platforms.clear(); bees.clear(); fallingObjects.clear(); particles.clear(); clouds.clear();
         
-        clouds.clear();
         for (int i = 0; i < 6; i++) { 
             float cx = random.nextInt(WIDTH + 200);
             int cy = random.nextInt(200);
@@ -181,38 +196,32 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ==========================================
-    // LOGIC CHUYỂN CẢNH MỚI
-    // ==========================================
     private void startTransition() {
         if (currentState != State.VOICE_TEST) return;
         
         currentState = State.FADING_OUT;
-        SoundManager.playSound("assets/sounds/jump.wav"); // <--- Sửa đường dẫn
+        SoundManager.playSound("assets/sounds/jump.wav"); 
         
-        fadeTimer = new Timer(30, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (currentState == State.FADING_OUT) {
-                    fadeAlpha += 0.05f;
-                    if (fadeAlpha >= 1.0f) {
-                        fadeAlpha = 1.0f;
-                        currentState = State.FADING_IN;
-                        
-                        resetGame(); 
-                        SoundManager.playBGM("assets/sounds/game_music.wav"); // <--- Sửa đường dẫn
-                    }
-                } else if (currentState == State.FADING_IN) {
-                    fadeAlpha -= 0.05f;
-                    if (fadeAlpha <= 0.0f) {
-                        fadeAlpha = 0.0f;
-                        fadeTimer.stop();
-                        currentState = State.PLAYING;
-                        startDelay = 40; 
-                    }
+        // Dùng Lambda để tránh lỗi class not found
+        fadeTimer = new Timer(30, e -> {
+            if (currentState == State.FADING_OUT) {
+                fadeAlpha += 0.05f;
+                if (fadeAlpha >= 1.0f) {
+                    fadeAlpha = 1.0f;
+                    currentState = State.FADING_IN;
+                    resetGame(); 
+                    SoundManager.playBGM("assets/sounds/game_music.wav"); 
                 }
-                repaint();
+            } else if (currentState == State.FADING_IN) {
+                fadeAlpha -= 0.05f;
+                if (fadeAlpha <= 0.0f) {
+                    fadeAlpha = 0.0f;
+                    fadeTimer.stop();
+                    currentState = State.PLAYING;
+                    startDelay = 40; 
+                }
             }
+            repaint();
         });
         fadeTimer.start();
     }
@@ -258,14 +267,19 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 score += 1;
                 walkSoundTimer++;
                 if (walkSoundTimer >= 14 && player.isGrounded()) {
-                    SoundManager.playSound("assets/sounds/walk.wav"); // <--- Sửa đường dẫn
+                    SoundManager.playSound("assets/sounds/walk.wav"); 
                     walkSoundTimer = 0;
                 }
-            } else { walkSoundTimer = 14; }
+            } else { 
+                walkSoundTimer = 14; 
+            }
         }
 
         flagAnimTimer++;
-        if (flagAnimTimer >= 10) { isFlagA = !isFlagA; flagAnimTimer = 0; }
+        if (flagAnimTimer >= 10) { 
+            isFlagA = !isFlagA; 
+            flagAnimTimer = 0; 
+        }
 
         difficultyLevel = (score / 1500) + 1;
         updateMeteorTimer();
@@ -307,7 +321,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void handleGameOver() {
         SoundManager.stopBGM(); 
-        SoundManager.playSound("assets/sounds/die.wav"); // <--- Sửa đường dẫn
+        SoundManager.playSound("assets/sounds/die.wav"); 
         
         int currentFinalScore = score / 10;
         if (currentFinalScore > highScore) {
@@ -352,55 +366,57 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void generateNextPlatform() {
         if (platforms.isEmpty()) return;
         Platform last = platforms.get(platforms.size() - 1);
-        int gap = 160 + random.nextInt(Math.min(300, 150 + (difficultyLevel * 10)));
-        int nextX = last.x + last.width + gap;
-        int nextY = Math.max(250, Math.min(520, last.y + (random.nextInt(160) - 80)));
+     
+        // =============================================
+        // CẢI TIẾN 3: GIỚI HẠN GAP THEO VẬT LÝ NHẢY
+        // JUMP_FORCE = 17, GRAVITY = 0.8
+        // Max height ≈ 17² / (2 × 0.8) ≈ 180px
+        // Max horizontal distance khi nhảy ≈ 280px (buffer an toàn)
+        // → Cap gap tại 280 bất kể difficulty để luôn có thể vượt được
+        // =============================================
+        final int MAX_SAFE_GAP = 280;
+        int gap = 160 + random.nextInt(Math.min(MAX_SAFE_GAP - 160,
+                                                150 + (difficultyLevel * 10)));
+     
+        int nextX     = last.x + last.width + gap;
+        int nextY     = Math.max(250, Math.min(520, last.y + (random.nextInt(160) - 80)));
         int nextWidth = Math.max(150, 250 - (difficultyLevel * 5)) + random.nextInt(150);
-        
+     
         int currentDisplayScore = score / 10;
         boolean canSpawnObstacles = currentDisplayScore >= 100;
-        
-        // ==========================================
-        // THUẬT TOÁN MỚI: TÁCH ONG VÀ CHUỘT
-        // ==========================================
-        
-        // 1. Quyết định xem Bục này có xuất hiện Ong hay không TRƯỚC
-        int beeChance = Math.min(80, 20 + (difficultyLevel * 10));
+     
+        int beeChance    = Math.min(80, 20 + (difficultyLevel * 10));
         boolean willSpawnBee = canSpawnObstacles && (random.nextInt(100) < beeChance);
-
-        // 2. Khởi tạo biến chướng ngại vật dưới đất mặc định là KHÔNG CÓ
-        boolean hasObstacle1 = false; // Chuột
-        boolean hasObstacle2 = false; // Cưa
-        boolean hasAdvancedObstacle = false; 
-
-        // 3. Nếu KHÔNG CÓ ONG, thì mới cho phép random xuất hiện Chuột/Cưa
+     
+        boolean hasObstacle1       = false;
+        boolean hasObstacle2       = false;
+        boolean hasAdvancedObstacle = false;
+     
         if (!willSpawnBee) {
-            int obstacleChance = Math.min(95, 30 + (difficultyLevel * 15)); 
-            int advancedChance = Math.min(85, 10 + (difficultyLevel * 12)); 
-
-            hasObstacle1 = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
-            hasObstacle2 = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25)); 
+            int obstacleChance  = Math.min(95, 30 + (difficultyLevel * 15));
+            int advancedChance  = Math.min(85, 10 + (difficultyLevel * 12));
+            hasObstacle1        = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
+            hasObstacle2        = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25));
             hasAdvancedObstacle = canSpawnObstacles && (random.nextInt(100) < advancedChance);
         }
-
-        // Tạo bục với các thông số vừa tính toán
-        Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300, hasObstacle1, hasObstacle2, hasAdvancedObstacle);
-        
+     
+        Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300,
+                                            hasObstacle1, hasObstacle2, hasAdvancedObstacle);
+     
         if (currentDisplayScore < 100 || random.nextInt(100) > 20) {
-            newPlatform.coins.clear(); 
+            newPlatform.coins.clear();
         }
         platforms.add(newPlatform);
-        
+     
         if (canSpawnObstacles) {
-            // Sinh thiên thạch rơi ở giữa các khoảng trống
-            int gapObstacleChance = Math.min(90, 25 + (difficultyLevel * 10)); 
+            int gapObstacleChance = Math.min(90, 25 + (difficultyLevel * 10));
             if (gap > 220 && random.nextInt(100) < gapObstacleChance) {
-                fallingObjects.add(new FallingObject(last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3)));
+                fallingObjects.add(new FallingObject(
+                    last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3)));
             }
-            
-            // 4. Nếu lúc nãy đã quyết định sinh Ong, thì bây giờ ném Ong vào game
             if (willSpawnBee) {
-                bees.add(new Bee(nextX + random.nextInt(nextWidth), 100 + random.nextInt(150), 120)); 
+                bees.add(new Bee(nextX + random.nextInt(nextWidth),
+                                 100 + random.nextInt(150), 120));
             }
         }
     }
@@ -421,11 +437,17 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void updateParticles() {
         Iterator<Particle> it = particles.iterator();
-        while (it.hasNext()) { Particle p = it.next(); p.update(); if (p.isDead()) it.remove(); }
+        while (it.hasNext()) { 
+            Particle p = it.next(); 
+            p.update(); 
+            if (p.isDead()) it.remove(); 
+        }
     }
 
     private void spawnExplosion(int x, int y, Color color) {
-        for (int i = 0; i < 30; i++) { particles.add(new Particle(x, y, color)); }
+        for (int i = 0; i < 30; i++) { 
+            particles.add(new Particle(x, y, color)); 
+        }
     }
 
     @Override
@@ -433,7 +455,20 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
 
-        g2d.setColor(new Color(193, 227, 245)); 
+        // ==========================================
+        // THAY ĐỔI MÀU NỀN DỰA THEO CHỦ ĐỀ CHỌN MÀN
+        // ==========================================
+        switch (currentTheme) {
+            case 0: // Đồng cỏ
+                g2d.setColor(new Color(193, 227, 245)); 
+                break;
+            case 1: // Sa mạc
+                g2d.setColor(new Color(255, 200, 120)); 
+                break;
+            case 2: // Rừng đêm
+                g2d.setColor(new Color(25, 25, 60)); 
+                break;
+        }
         g2d.fillRect(0, 0, getWidth(), getHeight()); 
         
         if (bgPlain != null) {
@@ -466,7 +501,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                     Image currentFlag = isFlagA ? flagImgA : flagImgB;
                     int flagY = 280; 
                     if (currentFlag != null) g2d.drawImage(currentFlag, flagX, flagY, 60, 60, null);
-                    g2d.setColor(Color.WHITE); g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
+                    g2d.setColor(Color.WHITE); 
+                    g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
                     g2d.drawString("KỶ LỤC CŨ", flagX - 12, flagY - 8); 
                 }
             }
@@ -507,6 +543,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 if (v >= jumpThreshold) g2d.setColor(Color.RED);
                 else if (v >= walkThreshold) g2d.setColor(Color.ORANGE);
                 else g2d.setColor(Color.GREEN);
+                
                 g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, barWidth, 20);
                 
                 g2d.setColor(Color.YELLOW);
@@ -522,6 +559,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             g2d.setFont(new Font("Monospaced", Font.PLAIN, 16));
             g2d.setColor(Color.LIGHT_GRAY);
             g2d.drawString("Phím [Lên/Xuống] để chỉnh ngưỡng vạch vàng", WIDTH/2 - 210, HEIGHT/2 + 160);
+            
+            // Vẽ thêm hướng dẫn thoát
+            g2d.setFont(new Font("Monospaced", Font.PLAIN, 18));
+            g2d.setColor(Color.YELLOW);
+            g2d.drawString("[ BẤM 'ESC' ĐỂ QUAY LẠI MENU ]", WIDTH/2 - 165, HEIGHT/2 + 220);
             return;
         }
 
@@ -575,7 +617,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             g2d.setColor(Color.WHITE);
             g2d.drawString("ĐIỂM ĐẠT ĐƯỢC: " + (score/10), WIDTH/2 - 190, HEIGHT/2 + 20);
             
-            if ((score/10) >= highScore && highScore > 0) {
+            if ((score/10) >= highScore) {
                 g2d.setColor(Color.YELLOW); g2d.drawString("🎉 KỶ LỤC MỚI XÁC LẬP! 🎉", WIDTH/2 - 230, HEIGHT/2 + 70);
             } else {
                 g2d.setColor(Color.CYAN); g2d.drawString("KỶ LỤC CŨ: " + highScore, WIDTH/2 - 150, HEIGHT/2 + 70);
@@ -583,6 +625,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             
             g2d.setFont(new Font("Monospaced", Font.BOLD, 22)); g2d.setColor(Color.WHITE); time = System.currentTimeMillis(); 
             if (time % 1000 < 700) g2d.drawString("[ NHẤN SPACE ĐỂ CHƠI LẠI ]", WIDTH/2 - 175, HEIGHT/2 + 130);
+            
+            g2d.setFont(new Font("Monospaced", Font.PLAIN, 18));
+            g2d.setColor(Color.YELLOW);
+            g2d.drawString("[ BẤM 'ESC' ĐỂ QUAY LẠI MENU ]", WIDTH/2 - 165, HEIGHT/2 + 180);
         }
     }
 
@@ -590,12 +636,16 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     public void keyPressed(KeyEvent e) { 
         int key = e.getKeyCode();
         
+        // --- CHỨC NĂNG THOÁT RA MENU BẰNG NÚT ESCAPE ---
+        if (key == KeyEvent.VK_ESCAPE && (currentState == State.VOICE_TEST || currentState == State.GAMEOVER)) {
+            mainFrame.showMenu();
+        }
+        
         if (currentState == State.GAMEOVER && key == KeyEvent.VK_SPACE) {
             resetGame(); 
             currentState = State.PLAYING; 
             startDelay = 40; 
-            
-            SoundManager.playBGM("assets/sounds/game_music.wav"); // <--- Sửa đường dẫn
+            SoundManager.playBGM("assets/sounds/game_music.wav"); 
         }
         
         if (currentState == State.VOICE_TEST && e.getKeyCode() == KeyEvent.VK_UP) {
@@ -605,6 +655,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             jumpThreshold += 0.5;
         }
     }
+    
     @Override public void keyReleased(KeyEvent e) {}
     @Override public void keyTyped(KeyEvent e) {}
 

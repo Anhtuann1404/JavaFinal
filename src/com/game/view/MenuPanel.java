@@ -49,6 +49,7 @@ public class MenuPanel extends JPanel implements MouseListener {
             setContentAreaFilled(false); 
             setBorderPainted(false); 
             setFocusPainted(false); 
+            setFocusable(false); // Thêm dòng này để KHÔNG bị lỗi kẹt phím Space ở GamePanel
         }
 
         @Override
@@ -96,8 +97,9 @@ public class MenuPanel extends JPanel implements MouseListener {
         playBtn.setBounds(305, 365, btnW, btnH); 
         playBtn.addActionListener(e -> {
             SoundManager.playSound("assets/sounds/jump.wav"); 
-            System.out.println("---> Clicked: PLAY");
-            mainFrame.startGame(); 
+            System.out.println("---> Clicked: PLAY -> TỚI CHỌN MÀN");
+            // ĐÃ SỬA Ở ĐÂY: Trỏ tới màn hình Chọn Level thay vì vào thẳng Game
+            mainFrame.showLevelSelection(); 
         });
         this.add(playBtn);
 
