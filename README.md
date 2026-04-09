@@ -63,5 +63,24 @@ Mở Terminal hoặc Git Bash và gõ lệnh sau:
 ```bash
 git clone https://github.com/Anhtuann1404/JavaFinal.git
 
+```
+<h2 align="center">Demo Game</h2>
 
+<p align="center">
+  <img src="images/menu.png" width="700">
+</p>
+
+<p align="center"><b>Menu của game</b></p>
+
+<p align="center">
+  <img src="images/gameplay.png" width="700">
+</p>
+
+<p align="center"><b>Màn hình gameplay</b></p>
+
+<p align="center">
+  <img src="images/skin.png" width="700">
+</p>
+
+<p align="center"><b>Chọn skin nhân vật</b></p>
 
