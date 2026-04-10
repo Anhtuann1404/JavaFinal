@@ -18,10 +18,10 @@ public class Coin {
         // Có thể custom xu vàng/xu bạc/ngọc đỏ theo theme tùy ý
         themeImgs[0][0] = loadImg("assets/images/objects/plain/coin_a.png");
         themeImgs[0][1] = loadImg("assets/images/objects/plain/coin_b.png");
-        themeImgs[1][0] = loadImg("assets/images/objects/desert/coin_a.png");
-        themeImgs[1][1] = loadImg("assets/images/objects/desert/coin_b.png");
-        themeImgs[2][0] = loadImg("assets/images/objects/forest/coin_a.png");
-        themeImgs[2][1] = loadImg("assets/images/objects/forest/coin_b.png");
+        themeImgs[1][0] = loadImg("assets/images/objects/desert/coin_gold_a.png");
+        themeImgs[1][1] = loadImg("assets/images/objects/desert/coin_gold_b.png");
+        themeImgs[2][0] = loadImg("assets/images/objects/forest/coin_silver_a.png");
+        themeImgs[2][1] = loadImg("assets/images/objects/forest/coin_silver_b.png");
     }
 
     private static Image loadImg(String path) {

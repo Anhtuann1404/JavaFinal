@@ -14,7 +14,7 @@ import com.game.model.*;
 import com.game.controller.Main;
 import com.game.controller.SoundManager;
 
-public class GamePanel extends JPanel implements ActionListener, KeyListener {
+public class GamePanel extends JPanel implements ActionListener, KeyListener, MouseListener, MouseMotionListener {
     private final int WIDTH = 950, HEIGHT = 600;
     
     private enum State { VOICE_TEST, FADING_OUT, FADING_IN, PLAYING, GAMEOVER }
@@ -23,7 +23,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private Main mainFrame;
     private int currentTheme = 0; 
     
-    // --- HỆ THỐNG PARALLAX ĐỘNG ---
     private List<List<Image>> bgLayers = new ArrayList<>(); 
     private float[] layerX = new float[15]; 
     private float[] parallaxSpeeds = {
@@ -37,7 +36,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private float fadeAlpha = 0f;
     private Timer fadeTimer;
     
-    // --- HỆ THỐNG MÂY BAY XUYÊN MAP (Persistent Clouds) ---
     private Image[] cloudImages = new Image[3]; 
     private String[] cloudFileNames = { 
         "assets/images/cloud4.png", 
@@ -55,7 +53,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private List<FallingObject> fallingObjects = new ArrayList<>(); 
     private List<Particle> particles = new ArrayList<>(); 
     
-    // --- HỆ THỐNG BẪY (3 KHỐI: 0=Base, 1=Wave High, 2=Wave Low) ---
+    // --- HỆ THỐNG BẪY THUNG LŨNG (NƯỚC/LAVA ĐỘNG 3 LỚP) ---
     private Image[][] hazardImgs = new Image[3][3]; 
     private List<GapHazard> gapHazards = new ArrayList<>(); 
     private int hazardAnimTimer = 0; 
@@ -65,39 +63,48 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private int meteorSpawnTimer = 0, walkSoundTimer = 0, startDelay = 0; 
 
     private double walkThreshold = 1.5, jumpThreshold = 7.0; 
+
     private final int HUD_Y = 15, HUD_HEIGHT = 50;
 
-    // --- CLASS BẪY THUNG LŨNG ---
+    // --- BIẾN QUẢN LÝ NÚT UI ---
+    private Rectangle btnMenuRect = new Rectangle(); 
+    private boolean isHoverMenuBtn = false; 
+
+    // --- CLASS BẪY THUNG LŨNG (ĐÃ NÂNG CẤP) ---
     private class GapHazard {
         int x, y, width, height;
         public GapHazard(int x, int y, int width) {
-            this.x = x; this.y = y; this.width = width;
-            this.height = HEIGHT - y;
+            this.x = x; 
+            this.y = y; 
+            this.width = width; 
+            this.height = HEIGHT - y; 
         }
-        public void update(int speed) { this.x -= speed; }
+        public void update(int speed) {
+            this.x -= speed;
+        }
         public void draw(Graphics2D g) {
             Shape oldClip = g.getClip();
-            // Cắt khung vẽ để nước/lava không tràn ra ngoài khe hở
             g.setClip(x, y, width, height); 
-            
+
             int tileW = 50; 
             int cols = (width / tileW) + 2; 
             int waveFrame = ((hazardAnimTimer / 15) % 2 == 0) ? 1 : 2;
 
             for (int i = 0; i < cols; i++) {
                 int drawX = x + (i * tileW);
-                // Vẽ phần thân nước/lava ở dưới
                 Image baseImg = hazardImgs[currentTheme][0]; 
-                if (baseImg != null) g.drawImage(baseImg, drawX, y + 20, tileW, height, null);
-                // Vẽ phần gợn sóng nhấp nhô ở trên
+                if (baseImg != null) {
+                    g.drawImage(baseImg, drawX, y + 20, tileW, height - 20, null);
+                }
                 Image waveImg = hazardImgs[currentTheme][waveFrame]; 
-                if (waveImg != null) g.drawImage(waveImg, drawX, y, tileW, 40, null);
+                if (waveImg != null) {
+                    g.drawImage(waveImg, drawX, y, tileW, 50, null);
+                }
             }
             g.setClip(oldClip); 
         }
     }
 
-    // --- CLASS MÂY ---
     private class Cloud {
         float x, windSpeed;
         int y, width, height;
@@ -106,12 +113,15 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             this.x = x; this.y = y; this.width = width; this.height = height;
             this.windSpeed = windSpeed; this.img = img;
         }
-        public void update(int scrollSpeed) {
-            this.x -= (scrollSpeed * 0.1f) + this.windSpeed;
-            if (this.x + this.width < -100) {
-                this.x = WIDTH + 100;
-                this.y = random.nextInt(250);
-                this.img = cloudImages[random.nextInt(3)];
+        public void update(int baseSpeed) {
+            this.x -= (baseSpeed * 0.1f) + this.windSpeed;
+            if (this.x + this.width < -50) {
+                this.x = WIDTH + random.nextInt(150);
+                this.y = random.nextInt(200); 
+                this.img = cloudImages[random.nextInt(3)]; 
+                this.width = 80 + random.nextInt(100);
+                this.height = (int)(this.width * 0.6); 
+                this.windSpeed = 0.2f + random.nextFloat() * 0.8f; 
             }
         }
         public void draw(Graphics2D g) {
@@ -121,48 +131,64 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     public GamePanel(Main mainFrame) {
         this.mainFrame = mainFrame; 
+        
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setFocusable(true);
         this.addKeyListener(this); 
+        
+        // ĐĂNG KÝ SỰ KIỆN CHUỘT
+        this.addMouseListener(this);
+        this.addMouseMotionListener(this);
         
         SoundManager.loadAllSounds();
         loadHighScore(); 
         
         try { 
             String[] folderNames = {"plain", "desert", "forest"};
-            // Nạp Background Parallax
             for (int t = 0; t < 3; t++) {
                 List<Image> themeLayers = new ArrayList<>();
                 int layerIndex = 0; 
                 while (true) { 
                     File fBg = new File("assets/images/bg/" + folderNames[t] + "/layer" + layerIndex + ".png");
-                    if (fBg.exists()) { themeLayers.add(ImageIO.read(fBg)); layerIndex++; } 
-                    else break; 
+                    if (fBg.exists()) {
+                        themeLayers.add(ImageIO.read(fBg)); 
+                        layerIndex++; 
+                    } else {
+                        break; 
+                    }
                 }
                 bgLayers.add(themeLayers); 
             }
             
-            // Nạp Bẫy (Base, High, Low)
-            for(int t=0; t<3; t++) {
-                String f = folderNames[t];
-                // Bạn đặt tên file theo cấu trúc này nhé
-                hazardImgs[t][0] = loadImg("assets/images/objects/" + f + "/hazard_base.png");
-                hazardImgs[t][1] = loadImg("assets/images/objects/" + f + "/hazard_wave_high.png");
-                hazardImgs[t][2] = loadImg("assets/images/objects/" + f + "/hazard_wave_low.png");
-            }
+            hazardImgs[0][0] = loadImg("assets/images/objects/plain/water_base.png");
+            hazardImgs[0][1] = loadImg("assets/images/objects/plain/water_wave_high.png");
+            hazardImgs[0][2] = loadImg("assets/images/objects/plain/water_wave_low.png");
+            
+            hazardImgs[1][0] = loadImg("assets/images/objects/desert/lava_base.png");
+            hazardImgs[1][1] = loadImg("assets/images/objects/desert/lava_wave_high.png");
+            hazardImgs[1][2] = loadImg("assets/images/objects/desert/lava_wave_low.png");
+            
+            hazardImgs[2][0] = loadImg("assets/images/objects/forest/water_base.png");
+            hazardImgs[2][1] = loadImg("assets/images/objects/forest/water_wave_high.png");
+            hazardImgs[2][2] = loadImg("assets/images/objects/forest/water_wave_low.png");
 
-            // Nạp Mây
-            for (int i = 0; i < 3; i++) {
-                File fc = new File(cloudFileNames[i]);
-                if (fc.exists()) cloudImages[i] = ImageIO.read(fc);
+            for (int t = 1; t <= 2; t++) {
+                for (int i = 0; i < 3; i++) {
+                    if (hazardImgs[t][i] == null) hazardImgs[t][i] = hazardImgs[0][i];
+                }
             }
 
             File fFlagA = new File("assets/images/flag_blue_a.png");
             if(fFlagA.exists()) flagImgA = ImageIO.read(fFlagA);
+            
             File fFlagB = new File("assets/images/flag_blue_b.png");
             if(fFlagB.exists()) flagImgB = ImageIO.read(fFlagB);
-
-        } catch (Exception e) { e.printStackTrace(); }
+            
+            for (int i = 0; i < 3; i++) {
+                File fc = new File(cloudFileNames[i]);
+                if (fc.exists()) cloudImages[i] = ImageIO.read(fc);
+            }
+        } catch (Exception e) {}
 
         resetGame();
         currentState = State.VOICE_TEST; 
@@ -206,16 +232,22 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void resetGame() {
         score = 0; difficultyLevel = 1; meteorSpawnTimer = 0; walkSoundTimer = 0; startDelay = 40; 
-        for(int i = 0; i < layerX.length; i++) layerX[i] = 0;
         
-        // KHÔNG clear clouds để mây bay liên tục
+        for(int i = 0; i < layerX.length; i++) {
+            layerX[i] = 0;
+        }
+        
         platforms.clear(); bees.clear(); fallingObjects.clear(); particles.clear(); gapHazards.clear();
         
         if (clouds.isEmpty()) {
             for (int i = 0; i < 6; i++) { 
-                clouds.add(new Cloud(random.nextInt(WIDTH), random.nextInt(250), 
-                           80 + random.nextInt(70), 50, 0.2f + random.nextFloat() * 0.8f, 
-                           cloudImages[random.nextInt(3)]));
+                float cx = random.nextInt(WIDTH + 200);
+                int cy = random.nextInt(200);
+                int cw = 80 + random.nextInt(100);
+                int ch = (int)(cw * 0.6);
+                float cs = 0.2f + random.nextFloat() * 0.8f;
+                Image ci = cloudImages[random.nextInt(3)];
+                clouds.add(new Cloud(cx, cy, cw, ch, cs, ci));
             }
         }
         
@@ -230,8 +262,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void startTransition() {
         if (currentState != State.VOICE_TEST) return;
+        
         currentState = State.FADING_OUT;
         SoundManager.playSound("assets/sounds/jump.wav"); 
+        
         fadeTimer = new Timer(30, e -> {
             if (currentState == State.FADING_OUT) {
                 fadeAlpha += 0.05f;
@@ -257,47 +291,69 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        int speed = 0;
-        
-        if (currentState == State.PLAYING) {
-            if (startDelay > 0) startDelay--;
-            if (startDelay == 0 && audioSensor != null && audioSensor.isCalibrated()) {
-                double vol = audioSensor.getCurrentVolume();
-                if (vol >= jumpThreshold) { 
-                    player.jump(vol); 
-                    speed = 9 + (difficultyLevel / 2);
-                    score += 2; 
-                } else if (vol >= walkThreshold) { 
-                    speed = 5 + (difficultyLevel / 2); 
-                    score += 1;
-                    if (++walkSoundTimer >= 14 && player.isGrounded()) {
-                        SoundManager.playSound("assets/sounds/walk.wav"); 
-                        walkSoundTimer = 0;
-                    }
-                } else walkSoundTimer = 14;
-            }
-        }
-
-        // Cập nhật mây (luôn chạy)
-        for (Cloud c : clouds) c.update(speed);
-
-        if (currentState == State.FADING_OUT || currentState == State.FADING_IN || currentState == State.VOICE_TEST) {
+        if (currentState == State.FADING_OUT || currentState == State.FADING_IN) {
             updateParallaxBackground(1); 
+            for (Cloud c : clouds) c.update(0); 
             repaint();
             return;
         }
 
-        if (currentState == State.GAMEOVER) { updateParticles(); repaint(); return; }
+        if (currentState == State.VOICE_TEST) {
+            if (audioSensor != null && audioSensor.isCalibrated()) {
+                if (audioSensor.getCurrentVolume() >= jumpThreshold) {
+                    startTransition(); 
+                }
+            }
+            updateParallaxBackground(1); 
+            for (Cloud c : clouds) c.update(0); 
+            repaint(); 
+            return;
+        }
 
-        hazardAnimTimer++;
+        if (currentState == State.GAMEOVER) { 
+            updateParticles(); 
+            repaint(); 
+            return; 
+        }
+
+        int speed = 0;
+        if (startDelay > 0) startDelay--;
+
+        if (startDelay == 0 && audioSensor != null && audioSensor.isCalibrated()) {
+            double vol = audioSensor.getCurrentVolume();
+            if (vol >= jumpThreshold) { 
+                player.jump(vol); 
+                speed = 9 + (difficultyLevel / 2);
+                score += 2; 
+            } else if (vol >= walkThreshold) { 
+                speed = 5 + (difficultyLevel / 2); 
+                score += 1;
+                walkSoundTimer++;
+                if (walkSoundTimer >= 14 && player.isGrounded()) {
+                    SoundManager.playSound("assets/sounds/walk.wav"); 
+                    walkSoundTimer = 0;
+                }
+            } else { 
+                walkSoundTimer = 14; 
+            }
+        }
+
         flagAnimTimer++;
-        if (flagAnimTimer >= 10) { isFlagA = !isFlagA; flagAnimTimer = 0; }
+        if (flagAnimTimer >= 10) { 
+            isFlagA = !isFlagA; 
+            flagAnimTimer = 0; 
+        }
+        
+        hazardAnimTimer++; // Nhịp đập để Sóng nước/Lava nhấp nhô
 
         difficultyLevel = (score / 1500) + 1;
         updateMeteorTimer();
 
-        if (speed > 0) updateParallaxBackground(speed); 
+        if (speed > 0) {
+            updateParallaxBackground(speed); 
+        }
 
+        for (Cloud c : clouds) c.update(speed);
         for (Platform p : platforms) p.update(speed);
         for (GapHazard h : gapHazards) h.update(speed); 
         for (Bee b : bees) b.update(speed);
@@ -308,7 +364,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         checkCollisions(); 
 
         platforms.removeIf(p -> p.x < -600);
-        gapHazards.removeIf(h -> h.x + h.width < -100);
+        gapHazards.removeIf(h -> h.x + h.width < -100); 
         bees.removeIf(b -> b.x < -200);
         fallingObjects.removeIf(fo -> fo.y > HEIGHT + 100 || fo.x < -200);
         
@@ -324,15 +380,21 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         for (int i = 0; i < numberOfLayers; i++) {
             int speedIndex = Math.min(i, parallaxSpeeds.length - 1); 
             layerX[i] -= baseSpeed * parallaxSpeeds[speedIndex]; 
-            if (layerX[i] <= -WIDTH) layerX[i] += WIDTH; 
+            if (layerX[i] <= -WIDTH) {
+                layerX[i] += WIDTH; 
+            }
         }
     }
 
     private void handleGameOver() {
         SoundManager.stopBGM(); 
         SoundManager.playSound("assets/sounds/die.wav"); 
+        
         int currentFinalScore = score / 10;
-        if (currentFinalScore > highScore) { highScore = currentFinalScore; saveHighScore(); }
+        if (currentFinalScore > highScore) {
+            highScore = currentFinalScore;
+            saveHighScore(); 
+        }
         currentState = State.GAMEOVER;
     }
 
@@ -342,55 +404,113 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             if ((p.getMouseHitbox() != null && pHit.intersects(p.getMouseHitbox())) || 
                 (p.getSawHitbox() != null && pHit.intersects(p.getSawHitbox()))) {
                 spawnExplosion(player.getX() + 30, player.getY() + 40, Color.RED);
-                handleGameOver(); return;
+                handleGameOver(); 
+                return;
             }
-            for (Coin c : p.coins) if (!c.isCollected && pHit.intersects(c.getHitbox())) { c.isCollected = true; score += 1000; }
+            for (Coin c : p.coins) {
+                if (!c.isCollected && pHit.intersects(c.getHitbox())) { 
+                    c.isCollected = true; 
+                    score +=5; 
+                }
+            }
         }
-        for (Bee b : bees) if (pHit.intersects(b.getHitbox())) { spawnExplosion(player.getX()+30, player.getY()+40, Color.YELLOW); handleGameOver(); return; }
-        for (FallingObject fo : fallingObjects) if (pHit.intersects(fo.getHitbox())) { spawnExplosion(player.getX()+30, player.getY()+40, new Color(178, 34, 34)); handleGameOver(); return; }
+        for (Bee b : bees) {
+            if (pHit.intersects(b.getHitbox())) { 
+                spawnExplosion(player.getX() + 30, player.getY() + 40, Color.YELLOW); 
+                handleGameOver(); 
+                return; 
+            }
+        }
+        for (FallingObject fo : fallingObjects) {
+            if (pHit.intersects(fo.getHitbox())) { 
+                spawnExplosion(player.getX() + 30, player.getY() + 40, new Color(178, 34, 34)); 
+                handleGameOver(); 
+                return; 
+            }
+        }
     }
 
     private void generateNextPlatform() {
         if (platforms.isEmpty()) return;
         Platform last = platforms.get(platforms.size() - 1);
         int gap = 160 + random.nextInt(Math.min(300, 150 + (difficultyLevel * 10)));
+        
+        // CHÈN BẪY VÀO THUNG LŨNG (Y = 560)
         gapHazards.add(new GapHazard(last.x + last.width, 560, gap));
 
         int nextX = last.x + last.width + gap;
         int nextY = Math.max(250, Math.min(520, last.y + (random.nextInt(160) - 80)));
         int nextWidth = Math.max(150, 250 - (difficultyLevel * 5)) + random.nextInt(150);
         
-        boolean canSpawn = (score / 10) >= 100;
-        Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300, canSpawn && random.nextInt(100) < 40, canSpawn && random.nextInt(100) < 30, false, currentTheme);
+        int currentDisplayScore = score / 10;
+        boolean canSpawnObstacles = currentDisplayScore >= 20;
+        
+        int beeChance = Math.min(80, 20 + (difficultyLevel * 10));
+        boolean willSpawnBee = canSpawnObstacles && (random.nextInt(100) < beeChance);
+
+        boolean hasObstacle1 = false, hasObstacle2 = false, hasAdvancedObstacle = false; 
+
+        if (!willSpawnBee) {
+            int obstacleChance = Math.min(95, 30 + (difficultyLevel * 15)); 
+            int advancedChance = Math.min(85, 10 + (difficultyLevel * 12)); 
+
+            hasObstacle1 = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
+            hasObstacle2 = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25)); 
+            hasAdvancedObstacle = canSpawnObstacles && (random.nextInt(100) < advancedChance);
+        }
+
+        Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300, hasObstacle1, hasObstacle2, hasAdvancedObstacle, currentTheme);
+        
+        if (currentDisplayScore ==0 || random.nextInt(100) > 30) {
+            newPlatform.coins.clear(); 
+        }
         platforms.add(newPlatform);
         
-        if (canSpawn) {
-            if (gap > 220 && random.nextInt(100) < 30) fallingObjects.add(new FallingObject(last.x + last.width + (gap/2), -100, 5, currentTheme));
-            if (random.nextInt(100) < 20) bees.add(new Bee(nextX, 150, 120, currentTheme));
+        if (canSpawnObstacles) {
+            int gapObstacleChance = Math.min(90, 25 + (difficultyLevel * 10)); 
+            if (gap > 220 && random.nextInt(100) < gapObstacleChance) {
+                fallingObjects.add(new FallingObject(last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3),currentTheme));
+            }
+            if (willSpawnBee) {
+                bees.add(new Bee(nextX + random.nextInt(nextWidth), 100 + random.nextInt(150), 120,currentTheme)); 
+            }
         }
     }
 
     private void updateMeteorTimer() {
-        if ((score / 10) < 100) return;
-        if (++meteorSpawnTimer >= Math.max(30, 130 - (difficultyLevel * 15))) {
-            fallingObjects.add(new FallingObject(250 + random.nextInt(600), -50, 4, currentTheme));
+        int currentDisplayScore = score / 10;
+        if (currentDisplayScore < 100) return;
+        meteorSpawnTimer++;
+        int interval = Math.max(30, 130 - (difficultyLevel * 15)); 
+        if (meteorSpawnTimer >= interval) {
+            int meteorDropChance = Math.min(90, 25 + (difficultyLevel * 10)); 
+            if (random.nextInt(100) < meteorDropChance) {
+                fallingObjects.add(new FallingObject(250 + random.nextInt(650), -50, 4 + random.nextInt(4),currentTheme));
+            }
             meteorSpawnTimer = 0; 
         }
     }
 
     private void updateParticles() {
         Iterator<Particle> it = particles.iterator();
-        while (it.hasNext()) { Particle p = it.next(); p.update(); if (p.isDead()) it.remove(); }
+        while (it.hasNext()) { 
+            Particle p = it.next(); 
+            p.update(); 
+            if (p.isDead()) it.remove(); 
+        }
     }
 
-    private void spawnExplosion(int x, int y, Color color) { for (int i = 0; i < 30; i++) particles.add(new Particle(x, y, color)); }
+    private void spawnExplosion(int x, int y, Color color) {
+        for (int i = 0; i < 30; i++) { 
+            particles.add(new Particle(x, y, color)); 
+        }
+    }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
 
-        // Vẽ nền trời theo theme
         switch (currentTheme) {
             case 0: g2d.setColor(new Color(193, 227, 245)); break; 
             case 1: g2d.setColor(new Color(255, 200, 120)); break; 
@@ -398,20 +518,22 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
         g2d.fillRect(0, 0, getWidth(), getHeight()); 
         
-        // Vẽ Parallax
         if (currentTheme < bgLayers.size()) {
-            List<Image> layers = bgLayers.get(currentTheme);
-            for (int i = 0; i < layers.size(); i++) {
-                g2d.drawImage(layers.get(i), (int)layerX[i], 0, WIDTH, getHeight(), null);
-                g2d.drawImage(layers.get(i), (int)layerX[i] + WIDTH, 0, WIDTH, getHeight(), null);
+            List<Image> currentThemeLayers = bgLayers.get(currentTheme);
+            for (int i = 0; i < currentThemeLayers.size(); i++) {
+                Image layerImg = currentThemeLayers.get(i);
+                if (layerImg != null) {
+                    g2d.drawImage(layerImg, (int)layerX[i], 0, WIDTH, getHeight(), null);
+                    g2d.drawImage(layerImg, (int)layerX[i] + WIDTH, 0, WIDTH, getHeight(), null);
+                }
             }
         }
 
-        // Vẽ mây
         for (Cloud c : clouds) c.draw(g2d);
 
         if (currentState != State.VOICE_TEST && currentState != State.FADING_OUT) {
             for (GapHazard h : gapHazards) h.draw(g2d); 
+
             for (Platform p : platforms) p.draw(g2d); 
             for (Bee b : bees) b.draw(g2d);
             for (FallingObject fo : fallingObjects) fo.draw(g2d);
@@ -419,9 +541,15 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             if (currentState == State.PLAYING && highScore > 0) {
                 int flagX = player.getX() + ((highScore * 10) - score) * 5;
                 if (flagX > -100 && flagX < WIDTH + 100) {
-                    g2d.drawImage(isFlagA ? flagImgA : flagImgB, flagX, 280, 60, 60, null);
+                    Image currentFlag = isFlagA ? flagImgA : flagImgB;
+                    int flagY = 280; 
+                    if (currentFlag != null) g2d.drawImage(currentFlag, flagX, flagY, 60, 60, null);
+                    g2d.setColor(Color.WHITE); 
+                    g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
+                    g2d.drawString("KỶ LỤC CŨ", flagX - 12, flagY - 8); 
                 }
             }
+
             if (player != null && currentState != State.GAMEOVER) player.draw(g2d);
             for (Particle p : particles) p.draw(g2d);
         }
@@ -430,45 +558,177 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
         if (fadeAlpha > 0f) {
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
-            g2d.setColor(Color.BLACK); g2d.fillRect(0, 0, getWidth(), getHeight());
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f)); 
         }
     }
 
     private void drawUI(Graphics2D g2d) {
         long time = System.currentTimeMillis();
+
         if (currentState == State.VOICE_TEST || currentState == State.FADING_OUT) {
-            g2d.setColor(new Color(0, 0, 0, 180)); g2d.fillRect(0, 0, getWidth(), getHeight()); 
+            g2d.setColor(new Color(0, 0, 0, 150)); 
+            g2d.fillRect(0, 0, getWidth(), getHeight()); 
+            
             if (audioSensor != null) {
                 int v = (int) audioSensor.getCurrentVolume();
-                g2d.setFont(new Font("Monospaced", Font.BOLD, 22)); g2d.setColor(Color.WHITE);
-                g2d.drawString("THỬ MIC TRƯỚC KHI VÀO:", WIDTH/2 - 140, HEIGHT/2 + 20);
-                g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, 400, 25);
-                g2d.setColor(v >= jumpThreshold ? Color.RED : Color.GREEN);
-                g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, Math.min(400, v*15), 25);
+                int barWidth = Math.min(400, (int)(v * 15)); 
+                int targetWidth = Math.min(400, (int)(jumpThreshold * 15)); 
+
+                g2d.setFont(new Font("Monospaced", Font.BOLD, 20));
+                g2d.setColor(Color.WHITE);
+                g2d.drawString("THỬ MIC TRƯỚC KHI VÀO:", WIDTH/2 - 135, HEIGHT/2 + 35);
+                
+                g2d.setColor(new Color(255, 255, 255, 60));
+                g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, 400, 20);
+                
+                if (v >= jumpThreshold) g2d.setColor(Color.RED);
+                else if (v >= walkThreshold) g2d.setColor(Color.ORANGE);
+                else g2d.setColor(Color.GREEN);
+                
+                g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, barWidth, 20);
+                
+                g2d.setColor(Color.YELLOW);
+                g2d.fillRect(WIDTH/2 - 200 + targetWidth, HEIGHT/2 + 45, 4, 30);
             }
+
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 22));
+            g2d.setColor(Color.WHITE);
+            if (currentState != State.FADING_OUT && time % 1000 < 600) {
+                g2d.drawString(">>> HÉT VƯỢT VẠCH VÀNG ĐỂ BẮT ĐẦU <<<", WIDTH/2 - 235, HEIGHT/2 + 120);
+            }
+            
+            g2d.setFont(new Font("Monospaced", Font.PLAIN, 16));
+            g2d.setColor(Color.LIGHT_GRAY);
+            g2d.drawString("Phím [Lên/Xuống] để chỉnh ngưỡng vạch vàng", WIDTH/2 - 210, HEIGHT/2 + 160);
+            
+            // --- VẼ NÚT QUAY LẠI MENU MÀN HÌNH VOICE TEST ---
+            btnMenuRect.setBounds(WIDTH / 2 - 125, HEIGHT / 2 + 195, 250, 45);
+            if (isHoverMenuBtn) {
+                g2d.setColor(new Color(255, 165, 0)); // Màu cam sáng
+            } else {
+                g2d.setColor(new Color(200, 100, 0)); // Màu cam đậm
+            }
+            g2d.fillRoundRect(btnMenuRect.x, btnMenuRect.y, btnMenuRect.width, btnMenuRect.height, 15, 15);
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawRoundRect(btnMenuRect.x, btnMenuRect.y, btnMenuRect.width, btnMenuRect.height, 15, 15);
+            
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
+            g2d.drawString("QUAY LẠI MENU", btnMenuRect.x + 48, btnMenuRect.y + 28);
             return;
         }
 
-        g2d.setColor(new Color(0, 0, 0, 150)); g2d.fillRoundRect(20, HUD_Y, WIDTH - 40, HUD_HEIGHT, 15, 15); 
+        g2d.setColor(new Color(0, 0, 0, 150));
+        g2d.fillRoundRect(20, HUD_Y, WIDTH - 40, HUD_HEIGHT, 20, 20); 
+
         g2d.setFont(new Font("Monospaced", Font.BOLD, 22));
-        g2d.setColor(Color.YELLOW); g2d.drawString("ĐIỂM: " + (score / 10), 40, 45); 
-        g2d.setColor(Color.CYAN); g2d.drawString("🏆 KỶ LỤC: " + highScore, 220, 45); 
+        String sT = " ĐIỂM: " + (score / 10);
+        g2d.setColor(Color.BLACK); g2d.drawString(sT, 42, 47);
+        g2d.setColor(new Color(255, 215, 0)); g2d.drawString(sT, 40, 45); 
+
+        String hSText = "🏆 " + highScore;
+        g2d.setColor(Color.BLACK); g2d.drawString(hSText, 222, 47);
+        g2d.setColor(Color.CYAN); g2d.drawString(hSText, 220, 45); 
 
         if (currentState == State.GAMEOVER) {
-            g2d.setColor(new Color(0, 0, 0, 200)); g2d.fillRect(0, 0, getWidth(), getHeight()); 
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 70)); g2d.setColor(Color.RED);
-            g2d.drawString("GAME OVER", WIDTH/2 - 180, HEIGHT/2 - 50);
-            g2d.setFont(new Font("Monospaced", Font.BOLD, 30)); g2d.setColor(Color.WHITE);
-            if (time % 1000 < 700) g2d.drawString("[ SPACE ĐỂ CHƠI LẠI ]", WIDTH/2 - 170, HEIGHT/2 + 50);
+            g2d.setColor(new Color(0, 0, 0, 210)); 
+            g2d.fillRect(0, 0, getWidth(), getHeight()); 
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 80));
+            g2d.setColor(new Color(255, 50, 50)); g2d.drawString("THẤT BẠI!", WIDTH/2 - 220, HEIGHT/2 - 60);
+            
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 35));
+            g2d.setColor(Color.WHITE);
+            g2d.drawString("ĐIỂM ĐẠT ĐƯỢC: " + (score/10), WIDTH/2 - 190, HEIGHT/2 + 20);
+            
+            if ((score/10) >= highScore && highScore > 0) {
+                g2d.setColor(Color.YELLOW); g2d.drawString("🎉 KỶ LỤC MỚI XÁC LẬP! 🎉", WIDTH/2 - 230, HEIGHT/2 + 70);
+            } else {
+                g2d.setColor(Color.CYAN); g2d.drawString("KỶ LỤC CŨ: " + highScore, WIDTH/2 - 150, HEIGHT/2 + 70);
+            }
+            
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 22)); 
+            g2d.setColor(Color.WHITE); 
+            if (time % 1000 < 700) g2d.drawString("[ NHẤN SPACE ĐỂ CHƠI LẠI ]", WIDTH/2 - 175, HEIGHT/2 + 130);
+            
+            // --- VẼ NÚT QUAY LẠI MENU MÀN HÌNH GAME OVER ---
+            btnMenuRect.setBounds(WIDTH / 2 - 125, HEIGHT / 2 + 160, 250, 45);
+            if (isHoverMenuBtn) {
+                g2d.setColor(new Color(255, 165, 0)); // Màu cam sáng
+            } else {
+                g2d.setColor(new Color(200, 100, 0)); // Màu cam đậm
+            }
+            g2d.fillRoundRect(btnMenuRect.x, btnMenuRect.y, btnMenuRect.width, btnMenuRect.height, 15, 15);
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawRoundRect(btnMenuRect.x, btnMenuRect.y, btnMenuRect.width, btnMenuRect.height, 15, 15);
+            
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
+            g2d.drawString("QUAY LẠI MENU", btnMenuRect.x + 48, btnMenuRect.y + 28);
         }
     }
 
-    @Override public void keyPressed(KeyEvent e) { 
-        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) mainFrame.showMenu();
-        if (currentState == State.GAMEOVER && e.getKeyCode() == KeyEvent.VK_SPACE) { resetGame(); currentState = State.PLAYING; }
+    @Override
+    public void keyPressed(KeyEvent e) { 
+        int key = e.getKeyCode();
+        if (key == KeyEvent.VK_ESCAPE && (currentState == State.VOICE_TEST || currentState == State.GAMEOVER)) {
+            mainFrame.showMenu();
+        }
+        if (currentState == State.GAMEOVER && key == KeyEvent.VK_SPACE) {
+            resetGame(); 
+            currentState = State.PLAYING; 
+            startDelay = 40; 
+            SoundManager.playBGM("assets/sounds/game_music.wav"); 
+        }
+        if (currentState == State.VOICE_TEST && e.getKeyCode() == KeyEvent.VK_UP) {
+            jumpThreshold = Math.max(walkThreshold + 1, jumpThreshold - 0.5);
+        }
+        if (currentState == State.VOICE_TEST && e.getKeyCode() == KeyEvent.VK_DOWN) {
+            jumpThreshold += 0.5;
+        }
     }
+    
     @Override public void keyReleased(KeyEvent e) {}
     @Override public void keyTyped(KeyEvent e) {}
-    public void setPlayerSkin(String color) { if (player != null) player.loadCharacterImages(color); }
+
+    public void setPlayerSkin(String color) {
+        if (player != null) {
+            player.loadCharacterImages(color);
+        }
+    }
+
+    // ================= SỰ KIỆN CHUỘT (CLICK & HOVER) =================
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        // Chỉ nhận diện chuột ở màn hình Test Mic hoặc Game Over
+        if (currentState == State.VOICE_TEST || currentState == State.GAMEOVER) {
+            boolean wasHovered = isHoverMenuBtn;
+            // Kiểm tra xem tọa độ chuột có đang nằm trong khung hình chữ nhật của nút không
+            isHoverMenuBtn = btnMenuRect.contains(e.getPoint());
+            
+            // Nếu trạng thái hover thay đổi, cập nhật con trỏ chuột và vẽ lại màn hình
+            if (wasHovered != isHoverMenuBtn) {
+                setCursor(isHoverMenuBtn ? new Cursor(Cursor.HAND_CURSOR) : new Cursor(Cursor.DEFAULT_CURSOR));
+                repaint();
+            }
+        }
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        // Chỉ nhận diện click chuột TRÁI
+        if ((currentState == State.VOICE_TEST || currentState == State.GAMEOVER) && SwingUtilities.isLeftMouseButton(e)) {
+            if (btnMenuRect.contains(e.getPoint())) {
+                setCursor(new Cursor(Cursor.DEFAULT_CURSOR)); // Trả lại trỏ chuột bình thường
+                mainFrame.showMenu(); // Kích hoạt lệnh chuyển cảnh
+            }
+        }
+    }
+
+    @Override public void mouseClicked(MouseEvent e) {}
+    @Override public void mouseReleased(MouseEvent e) {}
+    @Override public void mouseEntered(MouseEvent e) {}
+    @Override public void mouseExited(MouseEvent e) {}
+    @Override public void mouseDragged(MouseEvent e) {}
 }

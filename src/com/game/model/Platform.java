@@ -9,7 +9,7 @@ import java.util.Random;
 
 public class Platform {
     public int x, y, width, height;
-    private static final int BLOCK_SIZE = 50;
+    private static final int BLOCK_SIZE = 60;
     private static final int SCREEN_HEIGHT = 600;
 
     // Biến lưu lại ID của Map hiện tại để hàm draw() biết đường vẽ
