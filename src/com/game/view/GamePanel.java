@@ -20,17 +20,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private enum State { VOICE_TEST, FADING_OUT, FADING_IN, PLAYING, GAMEOVER }
     private State currentState = State.VOICE_TEST; 
     
-    // --- THÊM BIẾN MAIN ĐỂ KẾT NỐI VỚI BỘ ĐIỀU KHIỂN ---
     private Main mainFrame;
-    
-    // --- THÊM BIẾN ĐỂ LƯU CHỦ ĐỀ (THEME) CỦA MÀN CHƠI ---
     private int currentTheme = 0; 
     
     private Player player;
     private AudioSensor audioSensor;
     private Timer gameTimer;
     
-    // --- BIẾN CHO HIỆU ỨNG CHUYỂN CẢNH ---
     private float fadeAlpha = 0f;
     private Timer fadeTimer;
     
@@ -53,19 +49,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private List<FallingObject> fallingObjects = new ArrayList<>(); 
     private List<Particle> particles = new ArrayList<>(); 
     
-    private int score = 0;
-    private int highScore = 0; 
-    private int difficultyLevel = 1;
+    private int score = 0, highScore = 0, difficultyLevel = 1;
     private Random random = new Random();
-    private int meteorSpawnTimer = 0; 
-    private int walkSoundTimer = 0;
-    private int startDelay = 0; 
+    private int meteorSpawnTimer = 0, walkSoundTimer = 0, startDelay = 0; 
 
-    private double walkThreshold = 1.5;  
-    private double jumpThreshold = 7.0; 
+    private double walkThreshold = 1.5, jumpThreshold = 7.0; 
 
-    private final int HUD_Y = 15;
-    private final int HUD_HEIGHT = 50;
+    private final int HUD_Y = 15, HUD_HEIGHT = 50;
 
     private class Cloud {
         float x, windSpeed;
@@ -83,7 +73,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 this.img = cloudImages[random.nextInt(3)]; 
                 this.width = 80 + random.nextInt(100);
                 this.height = (int)(this.width * 0.6); 
-this.windSpeed = 0.2f + random.nextFloat() * 0.8f; 
+                this.windSpeed = 0.2f + random.nextFloat() * 0.8f; 
             }
         }
         public void draw(Graphics2D g) {
@@ -91,11 +81,8 @@ this.windSpeed = 0.2f + random.nextFloat() * 0.8f;
         }
     }
 
-    // ==========================================
-    // HÀM KHỞI TẠO ĐÃ ĐƯỢC CẬP NHẬT (THÊM MAIN)
-    // ==========================================
     public GamePanel(Main mainFrame) {
-        this.mainFrame = mainFrame; // Nhận kết nối từ Main
+        this.mainFrame = mainFrame; 
         
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setFocusable(true);
@@ -127,9 +114,7 @@ this.windSpeed = 0.2f + random.nextFloat() * 0.8f;
                 File fc = new File(cloudFileNames[i]);
                 if (fc.exists()) cloudImages[i] = ImageIO.read(fc);
             }
-        } catch (Exception e) {
-            System.out.println("🚨 Lỗi tải ảnh nền trong GamePanel!");
-        }
+        } catch (Exception e) {}
 
         resetGame();
         currentState = State.VOICE_TEST; 
@@ -143,9 +128,6 @@ this.windSpeed = 0.2f + random.nextFloat() * 0.8f;
         gameTimer.start();
     }
 
-    // ==========================================
-    // HÀM NHẬN CHỦ ĐỀ TỪ LEVEL PANEL
-    // ==========================================
     public void setTheme(int themeId) {
         this.currentTheme = themeId;
     }
@@ -162,7 +144,8 @@ this.windSpeed = 0.2f + random.nextFloat() * 0.8f;
             bw.write(String.valueOf(highScore));
         } catch (Exception e) {}
     }
-public void resetToVoiceTest() {
+
+    public void resetToVoiceTest() {
         resetGame();
         currentState = State.VOICE_TEST;
         fadeAlpha = 0f; 
@@ -184,15 +167,13 @@ public void resetToVoiceTest() {
             clouds.add(new Cloud(cx, cy, cw, ch, cs, ci));
         }
         
-        Platform startPlatform = new Platform(0, 480, 400, 250, false, false, false);
+        Platform startPlatform = new Platform(0, 480, 400, 250, false, false, false, currentTheme);
         platforms.add(startPlatform);
 
         if (player == null) player = new Player(150, 400);
         else { player.setX(150); player.setY(400); }
         
-        for(int i = 0; i < 6; i++) {
-            generateNextPlatform();
-        }
+        for(int i = 0; i < 6; i++) generateNextPlatform();
     }
 
     private void startTransition() {
@@ -201,7 +182,6 @@ public void resetToVoiceTest() {
         currentState = State.FADING_OUT;
         SoundManager.playSound("assets/sounds/jump.wav"); 
         
-        // Dùng Lambda để tránh lỗi class not found
         fadeTimer = new Timer(30, e -> {
             if (currentState == State.FADING_OUT) {
                 fadeAlpha += 0.05f;
@@ -245,7 +225,8 @@ public void resetToVoiceTest() {
             repaint(); 
             return;
         }
-if (currentState == State.GAMEOVER) { 
+
+        if (currentState == State.GAMEOVER) { 
             updateParticles(); 
             repaint(); 
             return; 
@@ -333,7 +314,7 @@ if (currentState == State.GAMEOVER) {
         Rectangle pHit = player.getHitbox();
         for (Platform p : platforms) {
             if ((p.getMouseHitbox() != null && pHit.intersects(p.getMouseHitbox())) || 
-(p.getSawHitbox() != null && pHit.intersects(p.getSawHitbox()))) {
+                (p.getSawHitbox() != null && pHit.intersects(p.getSawHitbox()))) {
                 spawnExplosion(player.getX() + 30, player.getY() + 40, Color.RED);
                 handleGameOver(); 
                 return;
@@ -364,57 +345,42 @@ if (currentState == State.GAMEOVER) {
     private void generateNextPlatform() {
         if (platforms.isEmpty()) return;
         Platform last = platforms.get(platforms.size() - 1);
-     
-        // =============================================
-        // CẢI TIẾN 3: GIỚI HẠN GAP THEO VẬT LÝ NHẢY
-        // JUMP_FORCE = 17, GRAVITY = 0.8
-        // Max height ≈ 17² / (2 × 0.8) ≈ 180px
-        // Max horizontal distance khi nhảy ≈ 280px (buffer an toàn)
-        // → Cap gap tại 280 bất kể difficulty để luôn có thể vượt được
-        // =============================================
-        final int MAX_SAFE_GAP = 280;
-        int gap = 160 + random.nextInt(Math.min(MAX_SAFE_GAP - 160,
-                                                150 + (difficultyLevel * 10)));
-     
-        int nextX     = last.x + last.width + gap;
-        int nextY     = Math.max(250, Math.min(520, last.y + (random.nextInt(160) - 80)));
+        int gap = 160 + random.nextInt(Math.min(300, 150 + (difficultyLevel * 10)));
+        int nextX = last.x + last.width + gap;
+        int nextY = Math.max(250, Math.min(520, last.y + (random.nextInt(160) - 80)));
         int nextWidth = Math.max(150, 250 - (difficultyLevel * 5)) + random.nextInt(150);
-     
+        
         int currentDisplayScore = score / 10;
         boolean canSpawnObstacles = currentDisplayScore >= 100;
-     
-        int beeChance    = Math.min(80, 20 + (difficultyLevel * 10));
+        
+        int beeChance = Math.min(80, 20 + (difficultyLevel * 10));
         boolean willSpawnBee = canSpawnObstacles && (random.nextInt(100) < beeChance);
-     
-        boolean hasObstacle1       = false;
-        boolean hasObstacle2       = false;
-        boolean hasAdvancedObstacle = false;
-     
+
+        boolean hasObstacle1 = false, hasObstacle2 = false, hasAdvancedObstacle = false; 
+
         if (!willSpawnBee) {
-            int obstacleChance  = Math.min(95, 30 + (difficultyLevel * 15));
-            int advancedChance  = Math.min(85, 10 + (difficultyLevel * 12));
-            hasObstacle1        = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
-            hasObstacle2        = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25));
+            int obstacleChance = Math.min(95, 30 + (difficultyLevel * 15)); 
+            int advancedChance = Math.min(85, 10 + (difficultyLevel * 12)); 
+
+            hasObstacle1 = canSpawnObstacles && (random.nextInt(100) < obstacleChance);
+            hasObstacle2 = canSpawnObstacles && (random.nextInt(100) < (obstacleChance - 25)); 
             hasAdvancedObstacle = canSpawnObstacles && (random.nextInt(100) < advancedChance);
         }
-     
-        Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300,
-hasObstacle1, hasObstacle2, hasAdvancedObstacle);
-     
+
+        Platform newPlatform = new Platform(nextX, nextY, nextWidth, 300, hasObstacle1, hasObstacle2, hasAdvancedObstacle, currentTheme);
+        
         if (currentDisplayScore < 100 || random.nextInt(100) > 20) {
-            newPlatform.coins.clear();
+            newPlatform.coins.clear(); 
         }
         platforms.add(newPlatform);
-     
+        
         if (canSpawnObstacles) {
-            int gapObstacleChance = Math.min(90, 25 + (difficultyLevel * 10));
+            int gapObstacleChance = Math.min(90, 25 + (difficultyLevel * 10)); 
             if (gap > 220 && random.nextInt(100) < gapObstacleChance) {
-                fallingObjects.add(new FallingObject(
-                    last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3)));
+                fallingObjects.add(new FallingObject(last.x + last.width + (gap / 2) - 20, -100, 4 + random.nextInt(3),currentTheme));
             }
             if (willSpawnBee) {
-                bees.add(new Bee(nextX + random.nextInt(nextWidth),
-                                 100 + random.nextInt(150), 120));
+                bees.add(new Bee(nextX + random.nextInt(nextWidth), 100 + random.nextInt(150), 120,currentTheme)); 
             }
         }
     }
@@ -427,7 +393,7 @@ hasObstacle1, hasObstacle2, hasAdvancedObstacle);
         if (meteorSpawnTimer >= interval) {
             int meteorDropChance = Math.min(90, 25 + (difficultyLevel * 10)); 
             if (random.nextInt(100) < meteorDropChance) {
-                fallingObjects.add(new FallingObject(250 + random.nextInt(650), -50, 4 + random.nextInt(4)));
+                fallingObjects.add(new FallingObject(250 + random.nextInt(650), -50, 4 + random.nextInt(4),currentTheme));
             }
             meteorSpawnTimer = 0; 
         }
@@ -453,19 +419,11 @@ hasObstacle1, hasObstacle2, hasAdvancedObstacle);
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
 
-        // ==========================================
-        // THAY ĐỔI MÀU NỀN DỰA THEO CHỦ ĐỀ CHỌN MÀN
-        // ==========================================
+        // ĐỔI MÀU NỀN DỰA THEO CHỦ ĐỀ CHỌN MÀN
         switch (currentTheme) {
-            case 0: // Đồng cỏ
-                g2d.setColor(new Color(193, 227, 245)); 
-                break;
-            case 1: // Sa mạc
-                g2d.setColor(new Color(255, 200, 120)); 
-                break;
-            case 2: // Rừng đêm
-                g2d.setColor(new Color(25, 25, 60)); 
-                break;
+            case 0: g2d.setColor(new Color(193, 227, 245)); break; // Đồng cỏ
+            case 1: g2d.setColor(new Color(255, 200, 120)); break; // Sa mạc
+            case 2: g2d.setColor(new Color(25, 25, 60)); break;    // Rừng đêm
         }
         g2d.fillRect(0, 0, getWidth(), getHeight()); 
         
@@ -478,7 +436,7 @@ hasObstacle1, hasObstacle2, hasAdvancedObstacle);
             g2d.drawImage(bgHills, (int)hillsX + WIDTH, 0, WIDTH, getHeight(), null);
         }
         if (bgPiramids != null) {
-g2d.drawImage(bgPiramids, (int)piramidsX, 0, WIDTH, getHeight(), null);
+            g2d.drawImage(bgPiramids, (int)piramidsX, 0, WIDTH, getHeight(), null);
             g2d.drawImage(bgPiramids, (int)piramidsX + WIDTH, 0, WIDTH, getHeight(), null);
         }
         if (bgForest != null) {
@@ -542,7 +500,7 @@ g2d.drawImage(bgPiramids, (int)piramidsX, 0, WIDTH, getHeight(), null);
                 else if (v >= walkThreshold) g2d.setColor(Color.ORANGE);
                 else g2d.setColor(Color.GREEN);
                 
-g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, barWidth, 20);
+                g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, barWidth, 20);
                 
                 g2d.setColor(Color.YELLOW);
                 g2d.fillRect(WIDTH/2 - 200 + targetWidth, HEIGHT/2 + 45, 4, 30);
@@ -558,7 +516,6 @@ g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, barWidth, 20);
             g2d.setColor(Color.LIGHT_GRAY);
             g2d.drawString("Phím [Lên/Xuống] để chỉnh ngưỡng vạch vàng", WIDTH/2 - 210, HEIGHT/2 + 160);
             
-            // Vẽ thêm hướng dẫn thoát
             g2d.setFont(new Font("Monospaced", Font.PLAIN, 18));
             g2d.setColor(Color.YELLOW);
             g2d.drawString("[ BẤM 'ESC' ĐỂ QUAY LẠI MENU ]", WIDTH/2 - 165, HEIGHT/2 + 220);
@@ -607,7 +564,7 @@ g2d.fillRect(WIDTH/2 - 200, HEIGHT/2 + 50, barWidth, 20);
         
         if (currentState == State.GAMEOVER) {
             g2d.setColor(new Color(0, 0, 0, 210)); 
-g2d.fillRect(0, 0, getWidth(), getHeight()); 
+            g2d.fillRect(0, 0, getWidth(), getHeight()); 
             g2d.setFont(new Font("Monospaced", Font.BOLD, 80));
             g2d.setColor(new Color(255, 50, 50)); g2d.drawString("THẤT BẠI!", WIDTH/2 - 220, HEIGHT/2 - 60);
             
@@ -615,7 +572,7 @@ g2d.fillRect(0, 0, getWidth(), getHeight());
             g2d.setColor(Color.WHITE);
             g2d.drawString("ĐIỂM ĐẠT ĐƯỢC: " + (score/10), WIDTH/2 - 190, HEIGHT/2 + 20);
             
-            if ((score/10) >= highScore) {
+            if ((score/10) >= highScore && highScore > 0) {
                 g2d.setColor(Color.YELLOW); g2d.drawString("🎉 KỶ LỤC MỚI XÁC LẬP! 🎉", WIDTH/2 - 230, HEIGHT/2 + 70);
             } else {
                 g2d.setColor(Color.CYAN); g2d.drawString("KỶ LỤC CŨ: " + highScore, WIDTH/2 - 150, HEIGHT/2 + 70);
@@ -634,7 +591,7 @@ g2d.fillRect(0, 0, getWidth(), getHeight());
     public void keyPressed(KeyEvent e) { 
         int key = e.getKeyCode();
         
-        // --- CHỨC NĂNG THOÁT RA MENU BẰNG NÚT ESCAPE ---
+        // Thoát ra Menu bằng phím ESCAPE
         if (key == KeyEvent.VK_ESCAPE && (currentState == State.VOICE_TEST || currentState == State.GAMEOVER)) {
             mainFrame.showMenu();
         }

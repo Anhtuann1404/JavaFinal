@@ -27,7 +27,6 @@ public class MenuPanel extends JPanel implements MouseListener {
     private final int WIDTH = 950;
     private final int HEIGHT = 600;
 
-    // --- CÁC BIẾN CHO GIAO DIỆN SKIN ---
     private boolean isSkinMenu = false; 
     private String[] characterColors = {"yellow", "pink", "purple", "green"};
     private Image[] charMenuImages = new Image[4]; 
@@ -35,13 +34,12 @@ public class MenuPanel extends JPanel implements MouseListener {
     private Rectangle backRect; 
     private String currentSkin = "yellow"; 
 
-    // --- KHAI BÁO 3 NÚT ---
     private RoundButton playBtn;
     private RoundButton guideBtn;
     private RoundButton skinsBtn;
 
     // ==========================================
-    // CLASS TỰ TẠO NÚT HÌNH TRÒN 
+    // CLASS TỰ TẠO NÚT HÌNH TRÒN / BO GÓC
     // ==========================================
     class RoundButton extends JButton {
         public RoundButton() {
@@ -49,7 +47,7 @@ public class MenuPanel extends JPanel implements MouseListener {
             setContentAreaFilled(false); 
             setBorderPainted(false); 
             setFocusPainted(false); 
-            setFocusable(false); // Thêm dòng này để KHÔNG bị lỗi kẹt phím Space ở GamePanel
+            setFocusable(false); // CHỐNG LỖI KẸT PHÍM
         }
 
         @Override
@@ -68,7 +66,6 @@ public class MenuPanel extends JPanel implements MouseListener {
         this.setLayout(null); 
         this.addMouseListener(this); 
 
-        // 1. TẢI ẢNH NỀN & ẢNH SKIN TỪ FOLDER MỚI
         try {
             menuBg = ImageIO.read(new File("assets/images/ui/menu_bg_new.png")); 
             for (int i = 0; i < 4; i++) {
@@ -79,16 +76,12 @@ public class MenuPanel extends JPanel implements MouseListener {
             System.out.println("🚨 Lỗi: Không tìm thấy file ảnh nền hoặc ảnh nhân vật!");
         }
 
-        // Tọa độ 4 ô chọn Skin và nút Back 
         int startX = 245; 
         for (int i = 0; i < 4; i++) {
-charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 120);
+            charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 120);
         }
         backRect = new Rectangle(WIDTH/2 - 350, HEIGHT - 80, 700, 50);
 
-        // ==========================================
-        // KHỞI TẠO 3 NÚT
-        // ==========================================
         int btnW = 360; 
         int btnH = 160;
 
@@ -97,9 +90,7 @@ charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 12
         playBtn.setBounds(305, 365, btnW, btnH); 
         playBtn.addActionListener(e -> {
             SoundManager.playSound("assets/sounds/jump.wav"); 
-            System.out.println("---> Clicked: PLAY -> TỚI CHỌN MÀN");
-            // ĐÃ SỬA Ở ĐÂY: Trỏ tới màn hình Chọn Level thay vì vào thẳng Game
-            mainFrame.showLevelSelection(); 
+            mainFrame.showLevelSelection(); // CHUYỂN TỚI MÀN HÌNH CHỌN ẢI
         });
         this.add(playBtn);
 
@@ -108,7 +99,6 @@ charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 12
         guideBtn.setBounds(170, 350, btnW, btnH); 
         guideBtn.addActionListener(e -> {
             SoundManager.playSound("assets/sounds/jump.wav"); 
-            System.out.println("---> Clicked: GUIDE");
             showGuide();
         });
         this.add(guideBtn);
@@ -118,7 +108,6 @@ charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 12
         skinsBtn.setBounds(445, 350, btnW, btnH); 
         skinsBtn.addActionListener(e -> {
             SoundManager.playSound("assets/sounds/jump.wav"); 
-            System.out.println("---> Clicked: SKINS");
             isSkinMenu = true;
             playBtn.setVisible(false);
             guideBtn.setVisible(false);
@@ -134,8 +123,7 @@ charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 12
             Image scaled = img.getScaledInstance(width, height, Image.SCALE_SMOOTH);
             button.setIcon(new ImageIcon(scaled));
         } catch (Exception e) {
-            System.out.println("🚨 Lỗi: Không tìm thấy file ảnh nút: " + fileName);
-            button.setText(fileName);
+            button.setText("Lỗi Ảnh");
         }
     }
 
@@ -152,38 +140,22 @@ charSelectionRects[i] = new Rectangle(startX + (i * 120), HEIGHT/2 - 60, 100, 12
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
-g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // ==========================================
-        // VẼ NỀN COVER
-        // ==========================================
         if (menuBg != null) {
-            double imgWidth = menuBg.getWidth(null);
-            double imgHeight = menuBg.getHeight(null);
-            double screenWidth = getWidth();
-            double screenHeight = getHeight();
-
-            double scaleX = screenWidth / imgWidth;
-            double scaleY = screenHeight / imgHeight;
-            double scaleFactor = Math.max(scaleX, scaleY);
-
-            int finalWidth = (int) (imgWidth * scaleFactor);
-            int finalHeight = (int) (imgHeight * scaleFactor);
-
-            int xOffset = (int) ((screenWidth - finalWidth) / 2);
-            int yOffset = (int) ((screenHeight - finalHeight) / 2);
-
+            double scaleFactor = Math.max((double)getWidth() / menuBg.getWidth(null), (double)getHeight() / menuBg.getHeight(null));
+            int finalWidth = (int) (menuBg.getWidth(null) * scaleFactor);
+            int finalHeight = (int) (menuBg.getHeight(null) * scaleFactor);
+            int xOffset = (int) ((getWidth() - finalWidth) / 2);
+            int yOffset = (int) ((getHeight() - finalHeight) / 2);
             g2d.drawImage(menuBg, xOffset, yOffset, finalWidth, finalHeight, null);
         }
 
-        // ==========================================
-        // VẼ GIAO DIỆN CHỌN SKIN 
-        // ==========================================
         if (isSkinMenu) {
             g2d.setColor(new Color(0, 0, 0, 180)); 
-            // Cập nhật getWidth(), getHeight() để lớp đen chọn Skin tràn viền
             g2d.fillRect(0, 0, getWidth(), getHeight()); 
             
             g2d.setFont(new Font("Monospaced", Font.BOLD, 60));
@@ -211,18 +183,15 @@ g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTE
             
             g2d.setFont(new Font("Monospaced", Font.PLAIN, 20));
             g2d.setColor(Color.YELLOW);
-g2d.drawString("[ NHẤP CHUỘT CHỌN NHÂN VẬT - BẤM VÀO ĐÂY ĐỂ QUAY LẠI ]", WIDTH/2 - 320, HEIGHT - 50);
+            g2d.drawString("[ NHẤP CHUỘT CHỌN NHÂN VẬT - BẤM VÀO ĐÂY ĐỂ QUAY LẠI ]", WIDTH/2 - 320, HEIGHT - 50);
         }
     }
 
     @Override
     public void mouseClicked(MouseEvent e) {
         if (isSkinMenu) {
-            int mx = e.getX();
-            int my = e.getY();
-            
             for (int i = 0; i < 4; i++) {
-                if (charSelectionRects[i].contains(mx, my)) {
+                if (charSelectionRects[i].contains(e.getX(), e.getY())) {
                     currentSkin = characterColors[i];
                     SoundManager.playSound("assets/sounds/jump.wav"); 
                     mainFrame.updatePlayerSkin(currentSkin); 
@@ -230,8 +199,7 @@ g2d.drawString("[ NHẤP CHUỘT CHỌN NHÂN VẬT - BẤM VÀO ĐÂY ĐỂ QUA
                     return;
                 }
             }
-            
-            if (backRect.contains(mx, my)) {
+            if (backRect.contains(e.getX(), e.getY())) {
                 SoundManager.playSound("assets/sounds/jump.wav"); 
                 isSkinMenu = false; 
                 playBtn.setVisible(true);
