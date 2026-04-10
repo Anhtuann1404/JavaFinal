@@ -7,7 +7,7 @@ import java.util.List;
 
 public class Player {
     private int x, y;
-    private final int WIDTH = 45, HEIGHT = 50;
+    private final int WIDTH = 50, HEIGHT = 50;
 
     // VẬT LÝ & DI CHUYỂN
     private double velY = 0;

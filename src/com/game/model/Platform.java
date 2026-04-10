@@ -12,14 +12,16 @@ public class Platform {
     private static final int BLOCK_SIZE = 50;
     private static final int SCREEN_HEIGHT = 600;
 
-    // BIẾN MỚI: Lưu lại themeId để hàm draw() biết đường vẽ gạch nào
+    // Biến lưu lại ID của Map hiện tại để hàm draw() biết đường vẽ
     private int currentThemeId;
 
     // --- MẢNG LƯU TRỮ GẠCH THEO THEME [3 Themes][6 Vị trí] ---
-    // Vị trí: 0=TopLeft, 1=TopCenter, 2=TopRight, 3=BodyLeft, 4=BodyCenter, 5=BodyRight
     private static Image[][] tileImgs = new Image[3][6];
 
-    // --- MẢNG LƯU TRỮ ĐỒ TRANG TRÍ THEO THEME ---
+    // --- MẢNG LƯU TRỮ HÀNG RÀO THEO THEME [3 Themes] ---
+    private static Image[] fenceImgs = new Image[3];
+
+    // --- DANH SÁCH LƯU TRỮ ĐỒ TRANG TRÍ THEO THEME ---
     private static List<Image> plainDecors = new ArrayList<>();
     private static List<Image> desertDecors = new ArrayList<>();
     private static List<Image> forestDecors = new ArrayList<>();
@@ -28,20 +30,28 @@ public class Platform {
     private static List<Image> desertGrass = new ArrayList<>(); 
     private static List<Image> forestGrass = new ArrayList<>(); 
 
-    private static Image imgFence, imgFenceBroken;
     private static final Random rand = new Random();
 
+    // KHỐI NẠP ẢNH TĨNH (Chỉ nạp 1 lần khi game chạy)
     static {
         try {
-            // THEME 0: GẠCH ĐỒNG CỎ
-            tileImgs[0][0] = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top_left.png"));
-            tileImgs[0][1] = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top.png"));
-            tileImgs[0][2] = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_top_right.png"));
-            tileImgs[0][3] = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_left.png"));
-            tileImgs[0][4] = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_center.png"));
-            tileImgs[0][5] = ImageIO.read(new File("assets/images/terrain/plain/terrain_grass_block_right.png"));
+            // 1. THEME 0: ĐỒNG CỎ
+            tileImgs[0][0] = loadImg("assets/images/terrain/plain/terrain_grass_block_top_left.png");
+            tileImgs[0][1] = loadImg("assets/images/terrain/plain/terrain_grass_block_top.png");
+            tileImgs[0][2] = loadImg("assets/images/terrain/plain/terrain_grass_block_top_right.png");
+            tileImgs[0][3] = loadImg("assets/images/terrain/plain/terrain_grass_block_left.png");
+            tileImgs[0][4] = loadImg("assets/images/terrain/plain/terrain_grass_block_center.png");
+            tileImgs[0][5] = loadImg("assets/images/terrain/plain/terrain_grass_block_right.png");
 
-            // THEME 1: GẠCH SA MẠC (Bạn nhớ tạo các file ảnh này nhé)
+            fenceImgs[0] = loadImg("assets/images/terrain/plain/fence.png");
+
+            addIfExist(plainDecors, "assets/images/terrain/plain/sign_right.png");
+            addIfExist(plainDecors, "assets/images/terrain/plain/tree5.png");
+            addIfExist(plainGrass, "assets/images/terrain/plain/grass5.png");
+            addIfExist(plainGrass, "assets/images/terrain/plain/grass2.png");
+            addIfExist(plainGrass, "assets/images/terrain/plain/grass.png");
+
+            // 2. THEME 1: SA MẠC
             tileImgs[1][0] = loadImg("assets/images/terrain/desert/terrain_sand_block_top_left.png");
             tileImgs[1][1] = loadImg("assets/images/terrain/desert/terrain_sand_block_top.png");
             tileImgs[1][2] = loadImg("assets/images/terrain/desert/terrain_sand_block_top_right.png");
@@ -49,7 +59,13 @@ public class Platform {
             tileImgs[1][4] = loadImg("assets/images/terrain/desert/terrain_sand_block_center.png");
             tileImgs[1][5] = loadImg("assets/images/terrain/desert/terrain_sand_block_right.png");
 
-            // THEME 2: GẠCH RỪNG ĐÊM (Bạn nhớ tạo các file ảnh này nhé)
+            fenceImgs[1] = loadImg("assets/images/terrain/desert/fence_broken.png");
+
+            addIfExist(desertDecors, "assets/images/terrain/desert/cactus.png");
+            // Gợi ý: Nếu có cỏ khô sa mạc thì thêm dòng dưới
+             addIfExist(desertGrass, "assets/images/terrain/desert/dry_grass.png"); 
+
+            // 3. THEME 2: RỪNG ĐÊM
             tileImgs[2][0] = loadImg("assets/images/terrain/forest/terrain_wood_block_top_left.png");
             tileImgs[2][1] = loadImg("assets/images/terrain/forest/terrain_wood_block_top.png");
             tileImgs[2][2] = loadImg("assets/images/terrain/forest/terrain_wood_block_top_right.png");
@@ -57,25 +73,21 @@ public class Platform {
             tileImgs[2][4] = loadImg("assets/images/terrain/forest/terrain_wood_block_center.png");
             tileImgs[2][5] = loadImg("assets/images/terrain/forest/terrain_wood_block_right.png");
 
-            // LOGIC "CHỐNG MÙ": Nếu Sa Mạc / Rừng Đêm thiếu ảnh, tự động xài gạch Đồng Cỏ đắp vào
+            // Gợi ý Hàng rào và cây cối rừng đêm:
+            fenceImgs[2] = loadImg("assets/images/terrain/forest/fence_wood (2).png");
+             addIfExist(forestDecors, "assets/images/terrain/forest/mushroom.png");
+             addIfExist(forestGrass, "assets/images/terrain/forest/dark_grass.png");
+
+            // --- LOGIC "CHỐNG MÙ" (Dùng Tạm Ảnh) ---
             for(int t = 1; t <= 2; t++) {
+                // Nếu thiếu gạch, mượn gạch Đồng Cỏ
                 for(int i = 0; i < 6; i++) {
-                    if(tileImgs[t][i] == null) {
-                        tileImgs[t][i] = tileImgs[0][i];
-                    }
+                    if(tileImgs[t][i] == null) tileImgs[t][i] = tileImgs[0][i];
                 }
+                // Nếu thiếu hàng rào, mượn hàng rào Đồng Cỏ
+                if(fenceImgs[t] == null) fenceImgs[t] = fenceImgs[0];
             }
 
-            imgFence       = ImageIO.read(new File("assets/images/terrain/plain/fence.png"));
-            imgFenceBroken= ImageIO.read(new File("assets/images/terrain/desert/fence_broken.png"));
-
-            addIfExist(plainDecors, "assets/images/terrain/plain/tree34.png");
-            addIfExist(plainDecors, "assets/images/terrain/plain/tree27.png");
-            addIfExist(plainGrass, "assets/images/terrain/plain/grass4.png");
-            addIfExist(plainGrass, "assets/images/terrain/plain/grass2.png");
-            addIfExist(plainGrass, "assets/images/terrain/plain/grass.png");
-
-            addIfExist(desertDecors, "assets/images/terrain/desert/cactus.png");
         } catch (Exception e) {
             System.out.println("🚨 Lỗi tải ảnh trong Platform: " + e.getMessage());
         }
@@ -92,6 +104,7 @@ public class Platform {
         } catch (Exception e) {}
     }
 
+    // Các thành phần chướng ngại vật
     public Mouse mouse;
     public Saw saw;
     public List<Coin> coins = new ArrayList<>();
@@ -108,6 +121,7 @@ public class Platform {
     public List<Decoration> tallDecorList = new ArrayList<>();
     public List<Decoration> fenceList     = new ArrayList<>();
 
+    // CONSTRUCTOR
     public Platform(int x, int y, int width, int height,
                     boolean hasMouse, boolean hasSaw, boolean hasAdvancedObstacle, int themeId) {
         this.x      = x;
@@ -115,36 +129,36 @@ public class Platform {
         this.width  = Math.max(150, (width / BLOCK_SIZE) * BLOCK_SIZE);
         this.height = height;
         
-        // LƯU LẠI THEME ID
+        // Lưu Theme ID để hàm Draw biết
         this.currentThemeId = themeId;
 
         List<Rectangle> occupiedSpaces = new ArrayList<>();
         int decorPadding = 15;
 
-        // CHỌN BỘ ẢNH TRANG TRÍ THEO THEME
+        // --- BỘ LỌC TÀI NGUYÊN THEO THEME ---
         List<Image> currentDecors = plainDecors;
         List<Image> currentGrass = plainGrass;
+        Image currentFence = fenceImgs[0];
         
         if (themeId == 1) { 
             currentDecors = desertDecors.isEmpty() ? plainDecors : desertDecors; 
             currentGrass = desertGrass.isEmpty() ? plainGrass : desertGrass;
+            currentFence = fenceImgs[1];
         } else if (themeId == 2) { 
             currentDecors = forestDecors.isEmpty() ? plainDecors : forestDecors;
             currentGrass = forestGrass.isEmpty() ? plainGrass : forestGrass;
+            currentFence = fenceImgs[2];
         }
 
-        // SINH HÀNG RÀO
-        if (imgFence != null && rand.nextInt(100) < 60) {
-            Image fImg = (themeId == 1) ? imgFenceBroken : (rand.nextBoolean() ? imgFence : imgFenceBroken);
-            if (fImg == null) fImg = imgFence;
-            
+        // 1. SINH HÀNG RÀO THEO THEME
+        if (currentFence != null && rand.nextInt(100) < 60) {
             int rx = 10 + rand.nextInt(20);
             int fw = 50, fh = 40;
-            fenceList.add(new Decoration(fImg, rx, -35, fw, fh));
+            fenceList.add(new Decoration(currentFence, rx, -35, fw, fh));
             occupiedSpaces.add(new Rectangle(rx - decorPadding, -35, fw + decorPadding * 2, fh));
         }
 
-        // SINH ĐỒ TRANG TRÍ CAO
+        // 2. SINH CÂY CỐI/XƯƠNG RỒNG THEO THEME
         if (!currentDecors.isEmpty()) {
             int numTallDecors = 1 + rand.nextInt(2);
             for (int i = 0; i < numTallDecors; i++) {
@@ -170,7 +184,7 @@ public class Platform {
             }
         }
 
-        // SINH CỎ
+        // 3. SINH CỎ THEO THEME
         if (!currentGrass.isEmpty()) {
             int numGrass = 1 + rand.nextInt(3);
             for (int i = 0; i < numGrass; i++) {
@@ -196,11 +210,12 @@ public class Platform {
             }
         }
 
+        // Sinh Chướng ngại vật và Xu
         int obsX = this.x + (this.width / 2) - 20;
         if (hasMouse) {
-            this.mouse = new Mouse(obsX, y - 30, 40, 30, themeId);
+            this.mouse = new Mouse(obsX, y - 30, 40, 30, themeId); // Chuột cũng tự đổi theo theme
         } else if (hasSaw) {
-            this.saw = new Saw(obsX, y - 45, 45, 45, themeId);
+            this.saw = new Saw(obsX, y - 45, 45, 45, themeId);     // Lưỡi cưa cũng tự đổi
         } else if (hasAdvancedObstacle) {
             this.saw = new Saw(this.x + this.width - 70, y - 45, 45, 45, themeId);
         }
@@ -210,7 +225,7 @@ public class Platform {
             int spacing    = 45;
             int startCoinX = this.x + (this.width / 2) - ((numCoins * spacing) / 2);
             for (int i = 0; i < numCoins; i++) {
-                coins.add(new Coin(startCoinX + (i * spacing), y - 150, themeId));
+                coins.add(new Coin(startCoinX + (i * spacing), y - 150, themeId)); // Tiền cũng đổi theo theme
             }
         }
     }
@@ -226,7 +241,7 @@ public class Platform {
         int numCols = width / BLOCK_SIZE;
         int numRows = (SCREEN_HEIGHT - y) / BLOCK_SIZE + 1;
 
-        // NÂNG CẤP: Chọn bộ 6 viên gạch dựa vào currentThemeId
+        // VẼ GẠCH ĐÚNG THEO THEME
         Image[] currentTiles = tileImgs[currentThemeId];
 
         for (int r = 0; r < numRows; r++) {
@@ -234,26 +249,27 @@ public class Platform {
                 int drawX = x + (c * BLOCK_SIZE);
                 int drawY = y + (r * BLOCK_SIZE);
                 
-                // Mặc định là gạch ở giữa thân (vị trí 4)
-                Image blockImg = currentTiles[4]; 
+                Image blockImg = currentTiles[4]; // Mặc định khối thân giữa
                 
                 if (r == 0) {
-                    if (c == 0) blockImg = currentTiles[0]; // Góc trên trái
-                    else if (c == numCols - 1) blockImg = currentTiles[2]; // Góc trên phải
-                    else blockImg = currentTiles[1]; // Mặt phẳng trên
+                    if (c == 0) blockImg = currentTiles[0];
+                    else if (c == numCols - 1) blockImg = currentTiles[2];
+                    else blockImg = currentTiles[1];
                 } else {
-                    if (c == 0) blockImg = currentTiles[3]; // Cạnh thân trái
-                    else if (c == numCols - 1) blockImg = currentTiles[5]; // Cạnh thân phải
+                    if (c == 0) blockImg = currentTiles[3];
+                    else if (c == numCols - 1) blockImg = currentTiles[5];
                 }
                 
                 if (blockImg != null) g2d.drawImage(blockImg, drawX, drawY, BLOCK_SIZE, BLOCK_SIZE, null);
             }
         }
 
+        // Vẽ đồ trang trí
         for (Decoration d : fenceList)     g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
         for (Decoration d : tallDecorList) g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
         for (Decoration d : grassList)     g2d.drawImage(d.img, x + d.relX, y + d.relY, d.w, d.h, null);
 
+        // Vẽ chướng ngại vật
         if (mouse != null) mouse.draw(g2d);
         if (saw   != null) saw.draw(g2d);
         for (Coin c : coins) c.draw(g2d);
